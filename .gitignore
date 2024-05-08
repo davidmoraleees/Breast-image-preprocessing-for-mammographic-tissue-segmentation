@@ -1,5 +1,6 @@
 DICOM_Images/
 PNG_Images/
 Reports/
-ROI Masks/
+ROI_Masks/
+ROI_Masks_PNG/
 Metadata.xlsx
