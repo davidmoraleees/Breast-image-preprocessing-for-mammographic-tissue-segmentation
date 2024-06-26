@@ -11,10 +11,10 @@ import imageio
 from tqdm import tqdm
 
 # Directorio donde se encuentran las imágenes DICOM
-input_dir = "C:/Users/david/Downloads/DICOM_Images"
+input_dir = "C:/Users/david/Downloads/AllDICOMs"
 
 # Directorio donde se guardarán las imágenes PNG
-output_dir = "C:/Users/david/Downloads/PNG_Images"
+output_dir = "C:/Users/david/Downloads/AllDICOMs_PNG"
 
 # Crear el directorio de salida si no existe
 if not os.path.exists(output_dir):

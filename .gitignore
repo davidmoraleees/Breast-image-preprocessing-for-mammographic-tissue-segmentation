@@ -3,4 +3,5 @@ PNG_Images/
 Reports/
 ROI_Masks/
 ROI_Masks_PNG/
-Metadata.xlsx
+Pixel_level_annotation/
+INBreast/
