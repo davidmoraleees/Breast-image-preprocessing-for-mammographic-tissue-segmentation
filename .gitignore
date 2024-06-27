@@ -1,7 +1,2 @@
-DICOM_Images/
-PNG_Images/
-Reports/
-ROI_Masks/
-ROI_Masks_PNG/
-Pixel_level_annotation/
+figshare dataset/
 INBreast/

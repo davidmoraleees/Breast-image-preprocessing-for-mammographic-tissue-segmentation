@@ -1,7 +1,9 @@
 # Breast-cancer-diagnosis
-Escribo los pasos que tenemos que seguir. Yo dejaría la selección automática de imágenes para el final, y primero por el pre-procesamiento de imágenes (punto 2).
+Escribo los pasos que tenemos que seguir. Yo dejaría la selección automática de imágenes para el final, y empezaría primero por el pre-procesamiento de imágenes (punto 2).
 
-## 1. Selección Automática de Imágenes
+También, comentar que inicialmente estaba usando el dataset de los links que pone figshare, pero he visto que no podemos continuar con ese dataset. Así que de momento sigo con el dataset de INbreast, te adjunto también el link.
+
+El código principal donde pondremos todo es el main.py.
 
 ## 1. Selección Automática de Imágenes
 
