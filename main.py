@@ -4,6 +4,7 @@ from skimage import io, filters, morphology, measure, draw
 from scipy.ndimage import distance_transform_edt
 from tqdm import tqdm
 
+
 cc_image = io.imread('INbreast/AllDICOMs_PNG/20586908_6c613a14b80a8591_MG_R_CC_ANON.png', as_gray=True)
 mlo_image = io.imread('INbreast/AllDICOMs_PNG/20586960_6c613a14b80a8591_MG_R_ML_ANON.png', as_gray=True)
 
@@ -24,6 +25,7 @@ def separate_periphery(image):
     bpa_final[labeled_bpa == largest_region.label] = 1   
     pb = measure.find_contours(bpa_final, 0.5)[0]
     return bpa_final, pb
+
 
 cc_bpa, cc_pb = separate_periphery(cc_image)
 mlo_bpa, mlo_pb = separate_periphery(mlo_image)
@@ -72,7 +74,9 @@ def intensity_ratio_propagation(image, periphery):
     
     return corrected_image
 
-#cc_corrected = intensity_ratio_propagation(cc_image, cc_bpa)
+#cc_corrected = intensity_ratio_propagation(cc_image, cc_bpa) Esto lo he comentado porque tarda mucho
+#en compilar, y estaba haciendo otras pruebas.
+
 #mlo_corrected = intensity_ratio_propagation(mlo_image, mlo_bpa)
 
 plt.figure(figsize=(12, 12))
@@ -96,37 +100,73 @@ plt.show()
 
 
 # Breast thickness estimation ---------------------------------------------------------------------------------
-#No sé si el código de arriba es correcto, pero tiene algo de sentido.
+def find_furthest_point_from_chest_wall(skinline, image_width):
+    chest_wall_x = image_width - 1 # Asumiendo que la pared torácica está en el borde derecho de la imagen.
+    distances = chest_wall_x - skinline[:, 1]
+    furthest_point_index = np.argmax(distances)
+    furthest_point = skinline[furthest_point_index]
+    return furthest_point, furthest_point_index
 
-#Ahora hay que dibujar unas líneas. Este código las dibuja mal, pero lo dejo por si necesitamos
-#inspirarnos en este para hacerlas correctamente:
 
-def find_skin_lines(pb):
-    nipple_index = np.argmax(pb[:, 1])
-    upper_skinline = pb[:nipple_index + 1]
-    lower_skinline = pb[nipple_index:]
-    return upper_skinline, lower_skinline
+image_width_cc = cc_image.shape[1]
+image_width_mlo = mlo_image.shape[1]
 
-def generate_parallel_lines(upper_skinline, lower_skinline, num_lines=3):
-    lines = []
-    for i in range(num_lines):
-        upper_idx = int(len(upper_skinline) * (i + 1) / (num_lines + 1))
-        lower_idx = int(len(lower_skinline) * (i + 1) / (num_lines + 1))
-        upper_point = upper_skinline[upper_idx]
-        lower_point = lower_skinline[lower_idx]
-        lines.append((upper_point, lower_point))
-    return lines
+furthest_point_cc, furthest_point_index_cc = find_furthest_point_from_chest_wall(cc_pb, image_width_cc)
+furthest_point_mlo, furthest_point_index_mlo = find_furthest_point_from_chest_wall(mlo_pb, image_width_mlo)
 
-upper_skinline, lower_skinline = find_skin_lines(mlo_pb)
-parallel_lines = generate_parallel_lines(upper_skinline, lower_skinline)
+cc_pb_upper = cc_pb[:furthest_point_index_cc+1]
+cc_pb_lower = cc_pb[furthest_point_index_cc:]
+
+mlo_pb_upper = mlo_pb[:furthest_point_index_mlo+1]
+mlo_pb_lower = mlo_pb[furthest_point_index_mlo:]
 
 plt.figure(figsize=(12, 12))
+plt.subplot(2, 2, 1)
+plt.imshow(cc_image, cmap='gray')
+plt.title('CC Original Image')
+
+plt.subplot(2, 2, 2)
+plt.imshow(cc_bpa, cmap='gray')
+plt.plot(cc_pb_upper[:, 1], cc_pb_upper[:, 0], '-b', linewidth=2)
+plt.plot(cc_pb_lower[:, 1], cc_pb_lower[:, 0], '-g', linewidth=2)
+plt.plot(furthest_point_cc[1], furthest_point_cc[0], 'yo')  
+plt.title('CC Peripheral Area')
+
+plt.subplot(2, 2, 3)
 plt.imshow(mlo_image, cmap='gray')
+plt.title('MLO Original Image')
 
-if parallel_lines:
-    for line in parallel_lines:
-        rr, cc = draw.line(int(line[0][0]), int(line[0][1]), int(line[1][0]), int(line[1][1]))
-        plt.plot(cc, rr, '-r', linewidth=2)
+plt.subplot(2, 2, 4)
+plt.imshow(mlo_bpa, cmap='gray')
+plt.plot(mlo_pb_upper[:, 1], mlo_pb_upper[:, 0], '-b', linewidth=2)
+plt.plot(mlo_pb_lower[:, 1], mlo_pb_lower[:, 0], '-g', linewidth=2)
+plt.plot(furthest_point_mlo[1], furthest_point_mlo[0], 'yo')  
+plt.title('MLO Peripheral Area')
 
-plt.title('MLO View with Parallel Lines')
 plt.show()
+
+#La recta no acaba de hacerse bien. Hay que acabar de afinar el código siguiente para que la recta se 
+#dibuje corectamente.
+def find_nearest_top(skinline):
+    top_point_index = np.argmin(skinline[:, 0])
+    return skinline[top_point_index]
+
+def find_nearest_right(skinline, image_width):
+    right_point_index = np.argmin(image_width - skinline[:, 1])
+    return skinline[right_point_index]
+
+top_reference = find_nearest_top(mlo_pb_upper)
+right_reference = find_nearest_right(mlo_pb_lower, image_width_mlo)
+
+if top_reference is None or right_reference is None:
+    print("No se encontraron puntos de referencia válidos cerca de los bordes especificados.")
+else:
+    plt.figure(figsize=(12, 12))
+    plt.imshow(mlo_image, cmap='gray')
+    plt.plot(mlo_pb[:, 1], mlo_pb[:, 0], '-r', linewidth=2)
+    plt.plot([top_reference[1], right_reference[1]], [top_reference[0], right_reference[0]], '-b', linewidth=2)
+    plt.plot(furthest_point_mlo[1], furthest_point_mlo[0], 'bo') 
+    plt.title('MLO Image with Reference Line')
+    plt.show()
+
+    
