@@ -1,7 +1,7 @@
 # Breast-cancer-diagnosis
 Escribo los pasos que tenemos que seguir. Yo dejaría la selección automática de imágenes para el final, y empezaría primero por el pre-procesamiento de imágenes (punto 2).
 
-También, comentar que inicialmente estaba usando el dataset de los links que pone figshare, pero he visto que no podemos continuar con ese dataset. Así que de momento sigo con el dataset de INbreast, te adjunto también el link.
+También, comentar que inicialmente estaba usando el dataset de los links que pone figshare, pero he visto que no podemos continuar con ese dataset. Así que de momento sigo con el dataset de INbreast, te adjunto también el link. Descarga el archivo, descomprímelo y ponlo en la carpeta donde tengas el proyecto, y llama a esta carpeta 'INbreast'. Luego tienes que crear una carpeta que se llame 'AllDICOMs_PNG' dentro de la carpeta 'INbreast', y tienes que ejecutar el código para pasar de formato DICOM a formato PNG, cambiando los paths correspondientes.
 
 El código principal donde pondremos todo es el main.py.
 
