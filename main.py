@@ -1,9 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from skimage import io, filters, morphology, measure, draw
-from scipy.ndimage import distance_transform_edt
-from tqdm import tqdm
-from numba import jit
+from skimage import io, filters, morphology, measure, exposure, color
+from scipy.ndimage import distance_transform_edt, binary_fill_holes
+from tqdm import tqdm 
+from skimage.segmentation import clear_border
 
 # Load images in grayscale
 cc_image = io.imread('INbreast/AllDICOMs_PNG/20586908_6c613a14b80a8591_MG_R_CC_ANON.png', as_gray=True)
@@ -98,12 +98,10 @@ def intensity_ratio_propagation(image, periphery):
     return corrected_image
 
 # Intensity ratio propagation for both images
-#cc_corrected = intensity_ratio_propagation(cc_image, cc_bpa) Esto lo he comentado porque tarda mucho
-#en compilar, y estaba haciendo otras pruebas.
+cc_corrected = intensity_ratio_propagation(cc_image, cc_bpa) 
+mlo_corrected = intensity_ratio_propagation(mlo_image, mlo_bpa)
 
-#mlo_corrected = intensity_ratio_propagation(mlo_image, mlo_bpa)
-
-# Display original and intensity ratio corrected images (commented out)
+# Display original and intensity ratio corrected images  
 plt.figure(figsize=(12, 12))
 plt.subplot(2, 2, 1)
 plt.imshow(cc_image, cmap='gray')
@@ -248,4 +246,83 @@ plt.subplot(2, 2, 4)
 plt.imshow(mlo_balanced, cmap='gray')
 plt.title('MLO Balanced Image')
 
+plt.show()
+
+# Breast segmentation  -----------------------------------------------------------------------------------------------------------
+# Segmentation based on intensity and geometric features
+def segment_breast_tissue(image):
+    # Apply histogram equalization for better contrast
+    equalized_image = exposure.equalize_hist(image)
+    
+    # Apply Otsu's threshold to separate the background and the breast tissue
+    otsu_thresh = filters.threshold_otsu(equalized_image)
+    binary_image = equalized_image > otsu_thresh
+    
+    # Remove artifacts connected to the image border
+    cleared_image = clear_border(binary_image)
+    
+    # Remove small objects and fill small holes
+    cleaned_image = morphology.remove_small_objects(cleared_image, min_size=500)
+    filled_image = binary_fill_holes(cleaned_image)
+    
+    # Label the connected regions
+    labeled_image = measure.label(filled_image)
+    regions = measure.regionprops(labeled_image)
+    
+    # Find the largest region, assuming it's the breast tissue
+    if regions:
+        largest_region = max(regions, key=lambda r: r.area)
+        breast_mask = np.zeros_like(filled_image)
+        breast_mask[labeled_image == largest_region.label] = 1
+    else:
+        breast_mask = np.zeros_like(filled_image)
+    
+    return breast_mask
+
+# Segment breast tissue in both images
+cc_segmented = segment_breast_tissue(cc_balanced)
+mlo_segmented = segment_breast_tissue(mlo_balanced)
+
+# Function to overlay segmentation on the original image
+def overlay_segmentation(image, segmentation):
+    # Create an RGB version of the grayscale image
+    image_rgb = color.gray2rgb(image)
+    # Create a color overlay where the segmentation is highlighted
+    overlay = color.label2rgb(segmentation, image_rgb, colors=['red'], alpha=0.3, bg_label=0, bg_color=None)
+    return overlay
+
+# Create overlays
+cc_overlay = overlay_segmentation(cc_balanced, cc_segmented)
+mlo_overlay = overlay_segmentation(mlo_balanced, mlo_segmented)
+
+# Display the original, segmented, and overlay images
+plt.figure(figsize=(16, 16))
+
+# CC Image
+plt.subplot(2, 3, 1)
+plt.imshow(cc_image, cmap='gray')
+plt.title('CC Original Image')
+
+plt.subplot(2, 3, 3)
+plt.imshow(cc_segmented, cmap='gray')
+plt.title('CC Segmented Image')
+
+plt.subplot(2, 3, 5)
+plt.imshow(cc_overlay)
+plt.title('CC Image with Segmentation Overlay')
+
+# MLO Image
+plt.subplot(2, 3, 2)
+plt.imshow(mlo_image, cmap='gray')
+plt.title('MLO Original Image')
+
+plt.subplot(2, 3, 4)
+plt.imshow(mlo_segmented, cmap='gray')
+plt.title('MLO Segmented Image')
+
+plt.subplot(2, 3, 6)
+plt.imshow(mlo_overlay)
+plt.title('MLO Image with Segmentation Overlay')
+
+plt.tight_layout()
 plt.show()
