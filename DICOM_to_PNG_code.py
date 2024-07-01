@@ -12,10 +12,10 @@ from tqdm import tqdm
 import numpy as np
 
 # Directorio donde se encuentran las imágenes DICOM
-input_dir = "C:/Users/david/Downloads/AllDICOMs" #Carpeta descargada de INBreast
+input_dir = "/Users/anastasiask/Documents/Física/UB/PIVA/Final_Project/AllDICOMs" #Carpeta descargada de INBreast
 
 # Directorio donde se guardarán las imágenes PNG. Esta carpeta la tenemos que crear nosotros.
-output_dir = "C:/Users/david/Downloads/AllDICOMs_PNG" 
+output_dir = "/Users/anastasiask/Documents/Física/UB/PIVA/Final_Project/AllDICOMs_PNG" 
 
 # Crear el directorio de salida si no existe
 if not os.path.exists(output_dir):
