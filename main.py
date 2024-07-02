@@ -108,7 +108,7 @@ plt.imshow(cc_image, cmap='gray')
 plt.title('CC Original Image')
 
 plt.subplot(2, 2, 2)
-#plt.imshow(cc_corrected, cmap='gray')
+plt.imshow(cc_corrected, cmap='gray')
 plt.title('CC Corrected Image')
 
 plt.subplot(2, 2, 3)
@@ -116,7 +116,7 @@ plt.imshow(mlo_image, cmap='gray')
 plt.title('MLO Original Image')
 
 plt.subplot(2, 2, 4)
-#plt.imshow(mlo_corrected, cmap='gray')
+plt.imshow(mlo_corrected, cmap='gray')
 plt.title('MLO Corrected Image')
 
 plt.show()
@@ -125,128 +125,56 @@ plt.show()
 # Breast thickness estimation ---------------------------------------------------------------------------------
 # Function to find the furthest point from the chest wall (right side of the image)
 def find_furthest_point_from_chest_wall(skinline, image_width):
-    chest_wall_x = image_width - 1 # Asumiendo que la pared torácica está en el borde derecho de la imagen.
+    chest_wall_x = image_width - 1  # Assuming the chest wall is at the right edge of the image
     distances = chest_wall_x - skinline[:, 1]
     furthest_point_index = np.argmax(distances)
     furthest_point = skinline[furthest_point_index]
     return furthest_point, furthest_point_index
 
-# Calculate image width for both images
-image_width_cc = cc_image.shape[1]
-image_width_mlo = mlo_image.shape[1]
-
-# Find furthest points from the chest wall for both images
-furthest_point_cc, furthest_point_index_cc = find_furthest_point_from_chest_wall(cc_pb, image_width_cc)
-furthest_point_mlo, furthest_point_index_mlo = find_furthest_point_from_chest_wall(mlo_pb, image_width_mlo)
-
-# Split the contour into upper and lower parts at the furthest point
-cc_pb_upper = cc_pb[:furthest_point_index_cc+1]
-cc_pb_lower = cc_pb[furthest_point_index_cc:]
-
-mlo_pb_upper = mlo_pb[:furthest_point_index_mlo+1]
-mlo_pb_lower = mlo_pb[furthest_point_index_mlo:]
-
-# Display the images with upper and lower contours
-plt.figure(figsize=(12, 12))
-plt.subplot(2, 2, 1)
-plt.imshow(cc_image, cmap='gray')
-plt.title('CC Original Image')
-
-plt.subplot(2, 2, 2)
-plt.imshow(cc_bpa, cmap='gray')
-plt.plot(cc_pb_upper[:, 1], cc_pb_upper[:, 0], '-b', linewidth=2)
-plt.plot(cc_pb_lower[:, 1], cc_pb_lower[:, 0], '-g', linewidth=2)
-plt.plot(furthest_point_cc[1], furthest_point_cc[0], 'yo')  
-plt.title('CC Peripheral Area')
-
-plt.subplot(2, 2, 3)
-plt.imshow(mlo_image, cmap='gray')
-plt.title('MLO Original Image')
-
-plt.subplot(2, 2, 4)
-plt.imshow(mlo_bpa, cmap='gray')
-plt.plot(mlo_pb_upper[:, 1], mlo_pb_upper[:, 0], '-b', linewidth=2)
-plt.plot(mlo_pb_lower[:, 1], mlo_pb_lower[:, 0], '-g', linewidth=2)
-plt.plot(furthest_point_mlo[1], furthest_point_mlo[0], 'yo')  
-plt.title('MLO Peripheral Area')
-
-plt.show()
-
-#La recta no acaba de hacerse bien. Hay que acabar de afinar el código siguiente para que la recta se 
-#dibuje corectamente.
 # Function to find the nearest top point in the contour
 def find_nearest_top(skinline):
     top_point_index = np.argmin(skinline[:, 0])
     return skinline[top_point_index]
 
-# Function to find the nearest right point in the contour
-def find_nearest_right(skinline, image_width):
-    right_point_index = np.argmin(image_width - skinline[:, 1])
-    return skinline[right_point_index]
+# Function to find the nearest bottom point in the contour
+def find_nearest_bottom(skinline):
+    bottom_point_index = np.argmax(skinline[:, 0])
+    return skinline[bottom_point_index]
 
-# Find top and right reference points for the MLO image
-top_reference = find_nearest_top(mlo_pb_upper)
-right_reference = find_nearest_right(mlo_pb_lower, image_width_mlo)
+# Function to draw reference lines similar to the paper
+def draw_reference_lines(image, skinline):
+    furthest_point, furthest_point_index = find_furthest_point_from_chest_wall(skinline, image.shape[1])
+    top_reference = find_nearest_top(skinline)
+    bottom_reference = find_nearest_bottom(skinline)
+    
+    # Breast center is assumed to be midway between top and bottom points
+    breast_center = [(top_reference[0] + bottom_reference[0]) // 2, (top_reference[1] + bottom_reference[1]) // 2]
 
-# Display the MLO image with reference lines
-if top_reference is None or right_reference is None:
-    print("No se encontraron puntos de referencia válidos cerca de los bordes especificados.")
-else:
+    # Draw the image and lines
     plt.figure(figsize=(12, 12))
-    plt.imshow(mlo_image, cmap='gray')
-    plt.plot(mlo_pb[:, 1], mlo_pb[:, 0], '-r', linewidth=2)
-    plt.plot([top_reference[1], right_reference[1]], [top_reference[0], right_reference[0]], '-b', linewidth=2)
-    plt.plot(furthest_point_mlo[1], furthest_point_mlo[0], 'bo') 
+    plt.imshow(image, cmap='gray')
+    
+    # Draw a single red line from top to bottom (through breast center)
+    plt.plot([top_reference[1], bottom_reference[1]], [top_reference[0], bottom_reference[0]], '-r', linewidth=2)
+
+    # Mark the points
+    plt.plot(top_reference[1], top_reference[0], 'yo')  # Top point
+    plt.plot(breast_center[1], breast_center[0], 'yo')  # Breast center
+    plt.plot(bottom_reference[1], bottom_reference[0], 'yo')  # Bottom point
+
     plt.title('MLO Image with Reference Line')
     plt.show()
 
-# Intensity balancing ----------------------------------------------------------------------------------------
-# Intensity balancing function
-def intensity_balancing(image, periphery):
-    # Calculate the distance transform of the periphery
-    R = distance_transform_edt(periphery)
-    Rmin, Rmax = R.min(), R.max()
-    Rref = np.mean(R[periphery])
-    Rlog = (R - Rmin) / (Rmax - Rmin)
-    Rref_log = (Rref - Rmin) / (Rmax - Rmin)
+# Calculate image width for the MLO image
+image_width_mlo = mlo_image.shape[1]
 
-    corrected_image = image.copy()
-    rows, cols = image.shape
+# Find contours for MLO image
+furthest_point_mlo, furthest_point_index_mlo = find_furthest_point_from_chest_wall(mlo_pb, image_width_mlo)
+mlo_pb_upper = mlo_pb[:furthest_point_index_mlo + 1]
+mlo_pb_lower = mlo_pb[furthest_point_index_mlo:]
 
-    # Iterate over each pixel in the image
-    for y in tqdm(range(rows), desc="Balancing Intensity"):
-        for x in range(cols):
-            if periphery[y, x]:
-                P = image[y, x]
-                RP = Rlog[y, x]
-                P_prime = P * (1 + (Rref_log - RP))
-                corrected_image[y, x] = P_prime
-
-    return corrected_image
-
-# Apply intensity balancing to both images
-cc_balanced = intensity_balancing(cc_image, cc_bpa)
-mlo_balanced = intensity_balancing(mlo_image, mlo_bpa)
-
-# Display original and balanced images
-plt.figure(figsize=(12, 12))
-plt.subplot(2, 2, 1)
-plt.imshow(cc_image, cmap='gray')
-plt.title('CC Original Image')
-
-plt.subplot(2, 2, 2)
-plt.imshow(cc_balanced, cmap='gray')
-plt.title('CC Balanced Image')
-
-plt.subplot(2, 2, 3)
-plt.imshow(mlo_image, cmap='gray')
-plt.title('MLO Original Image')
-
-plt.subplot(2, 2, 4)
-plt.imshow(mlo_balanced, cmap='gray')
-plt.title('MLO Balanced Image')
-
-plt.show()
+# Draw reference lines on the MLO image
+draw_reference_lines(mlo_image, mlo_pb)
 
 # Breast segmentation  -----------------------------------------------------------------------------------------------------------
 # Segmentation based on intensity and geometric features
@@ -279,10 +207,6 @@ def segment_breast_tissue(image):
     
     return breast_mask
 
-# Segment breast tissue in both images
-cc_segmented = segment_breast_tissue(cc_balanced)
-mlo_segmented = segment_breast_tissue(mlo_balanced)
-
 # Function to overlay segmentation on the original image
 def overlay_segmentation(image, segmentation):
     # Create an RGB version of the grayscale image
@@ -291,9 +215,13 @@ def overlay_segmentation(image, segmentation):
     overlay = color.label2rgb(segmentation, image_rgb, colors=['red'], alpha=0.3, bg_label=0, bg_color=None)
     return overlay
 
+# Segment breast tissue in both images
+cc_segmented = segment_breast_tissue(cc_image)
+mlo_segmented = segment_breast_tissue(mlo_image)
+
 # Create overlays
-cc_overlay = overlay_segmentation(cc_balanced, cc_segmented)
-mlo_overlay = overlay_segmentation(mlo_balanced, mlo_segmented)
+cc_overlay = overlay_segmentation(cc_image, cc_segmented)
+mlo_overlay = overlay_segmentation(mlo_image, mlo_segmented)
 
 # Display the original, segmented, and overlay images
 plt.figure(figsize=(16, 16))
@@ -326,3 +254,56 @@ plt.title('MLO Image with Segmentation Overlay')
 
 plt.tight_layout()
 plt.show()
+
+# Function to find the furthest point from the chest wall (right side of the image)
+def find_furthest_point_from_chest_wall(skinline, image_width):
+    chest_wall_x = image_width - 1  # Assuming the chest wall is at the right edge of the image
+    distances = chest_wall_x - skinline[:, 1]
+    furthest_point_index = np.argmax(distances)
+    furthest_point = skinline[furthest_point_index]
+    return furthest_point, furthest_point_index
+
+# Function to find the nearest top point in the contour
+def find_nearest_top(skinline):
+    top_point_index = np.argmin(skinline[:, 0])
+    return skinline[top_point_index]
+
+# Function to find the nearest bottom point in the contour
+def find_nearest_bottom(skinline):
+    bottom_point_index = np.argmax(skinline[:, 0])
+    return skinline[bottom_point_index]
+
+# Function to draw reference lines similar to the paper
+def draw_reference_lines(image, skinline):
+    furthest_point, furthest_point_index = find_furthest_point_from_chest_wall(skinline, image.shape[1])
+    top_reference = find_nearest_top(skinline)
+    bottom_reference = find_nearest_bottom(skinline)
+    
+    # Breast center is assumed to be midway between top and bottom points
+    breast_center = [(top_reference[0] + bottom_reference[0]) // 2, (top_reference[1] + bottom_reference[1]) // 2]
+
+    # Draw the image and lines
+    plt.figure(figsize=(12, 12))
+    plt.imshow(image, cmap='gray')
+    
+    # Draw a single red line from top to bottom (through breast center)
+    plt.plot([top_reference[1], bottom_reference[1]], [top_reference[0], bottom_reference[0]], '-r', linewidth=2)
+
+    # Mark the points
+    plt.plot(top_reference[1], top_reference[0], 'yo')  # Top point
+    plt.plot(breast_center[1], breast_center[0], 'yo')  # Breast center
+    plt.plot(bottom_reference[1], bottom_reference[0], 'yo')  # Bottom point
+
+    plt.title('MLO Image with Reference Line')
+    plt.show()
+
+# Calculate image width for the MLO image
+image_width_mlo = mlo_image.shape[1]
+
+# Find contours for MLO image
+furthest_point_mlo, furthest_point_index_mlo = find_furthest_point_from_chest_wall(mlo_pb, image_width_mlo)
+mlo_pb_upper = mlo_pb[:furthest_point_index_mlo + 1]
+mlo_pb_lower = mlo_pb[furthest_point_index_mlo:]
+
+# Draw reference lines on the MLO image
+draw_reference_lines(mlo_image, mlo_pb)
