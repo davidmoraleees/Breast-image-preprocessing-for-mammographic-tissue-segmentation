@@ -93,8 +93,8 @@ def intensity_ratio_propagation(image, periphery):
     
     return corrected_image
 
-cc_corrected = intensity_ratio_propagation(cc_image, cc_bpa) 
-mlo_corrected = intensity_ratio_propagation(mlo_image, mlo_bpa)
+#cc_corrected = intensity_ratio_propagation(cc_image, cc_bpa) 
+#mlo_corrected = intensity_ratio_propagation(mlo_image, mlo_bpa)
  
 plt.figure(figsize=(12, 12))
 plt.subplot(2, 2, 1)
@@ -102,7 +102,7 @@ plt.imshow(cc_image, cmap='gray')
 plt.title('CC Original Image')
 
 plt.subplot(2, 2, 2)
-plt.imshow(cc_corrected, cmap='gray')
+#plt.imshow(cc_corrected, cmap='gray')
 plt.title('CC Corrected Image')
 
 plt.subplot(2, 2, 3)
@@ -110,7 +110,7 @@ plt.imshow(mlo_image, cmap='gray')
 plt.title('MLO Original Image')
 
 plt.subplot(2, 2, 4)
-plt.imshow(mlo_corrected, cmap='gray')
+#plt.imshow(mlo_corrected, cmap='gray')
 plt.title('MLO Corrected Image')
 
 plt.show()
@@ -151,10 +151,12 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
     slope = calculate_slope(top_reference, right_reference)
     intercept = top_reference[0] - slope * top_reference[1]
     
+    parallel_lines = []
+
     plt.figure(figsize=(12, 12))
     plt.imshow(image, cmap='gray')
     
-    for i in range(num_lines+1):
+    for i in range(num_lines):
         parallel_intercept = intercept - (i + 1) * offset_distance / np.cos(np.arctan(slope))
         parallel_top = find_intersection(skinline, slope, parallel_intercept)
         parallel_bottom = find_intersection(skinline[::-1], slope, parallel_intercept)
@@ -163,7 +165,8 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
             plt.plot([parallel_top[1], parallel_bottom[1]], [parallel_top[0], parallel_bottom[0]], '-r', linewidth=2)
             plt.plot(parallel_top[1], parallel_top[0])
             plt.plot(parallel_bottom[1], parallel_bottom[0])
-    
+            parallel_lines.append((float(parallel_top[1]), float(parallel_bottom[1])))
+
     plt.plot([top_reference[1], right_reference[1]], [top_reference[0], right_reference[0]], '-r', linewidth=2)
     plt.plot(top_reference[1], top_reference[0])
     plt.plot(right_reference[1], right_reference[0])
@@ -171,18 +174,48 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
     plt.title('MLO Image with Reference and Parallel Lines')
     plt.show()
 
+    return parallel_lines
+
 image_width_mlo = mlo_image.shape[1]
 furthest_point_mlo, furthest_point_index_mlo = find_furthest_point_from_chest_wall(mlo_pb, image_width_mlo)
 mlo_pb_upper = mlo_pb[:furthest_point_index_mlo + 1]
 mlo_pb_lower = mlo_pb[furthest_point_index_mlo:]
 
+plt.figure()
+plt.imshow(mlo_bpa, cmap='gray')
+plt.plot(mlo_pb_upper[:, 1], mlo_pb_upper[:, 0], '-b', linewidth=2)
+plt.plot(mlo_pb_lower[:, 1], mlo_pb_lower[:, 0], '-g', linewidth=2)
+plt.plot(furthest_point_mlo[1], furthest_point_mlo[0])  
+plt.title('MLO Peripheral Area')
+plt.show()
+
 offset_distance = -501 #Negative value means going left.
 num_lines = 4  
-draw_reference_and_parallel_lines(mlo_image, mlo_pb, offset_distance, num_lines)
+parallel_lines = draw_reference_and_parallel_lines(mlo_image, mlo_pb, offset_distance, num_lines)
+
+def calculate_thickness_ratios(image, parallel_lines, offset_distance):
+    thickness_ratios = np.zeros_like(image, dtype=np.float64)
+    for x_upper, x_lower in parallel_lines:
+        thickness_ratios[:, int(x_lower):int(x_upper)+1] = 1 / abs(offset_distance) 
+    return thickness_ratios
+    
+# Aplicar el cálculo de ratios de espesor
+cc_thickness_ratios = calculate_thickness_ratios(cc_image, parallel_lines, offset_distance)
+mlo_thickness_ratios = calculate_thickness_ratios(mlo_image, parallel_lines, offset_distance)
+
+
+#Hay que acabar esto, no está acabado.
 
 
 
-#Falta acabar
+
+
+
+
+
+
+
+
 
 
 
@@ -227,25 +260,25 @@ def overlay_segmentation(image, segmentation):
     return overlay
 
 # Segment breast tissue in both images
-cc_segmented = segment_breast_tissue(cc_image)
-mlo_segmented = segment_breast_tissue(mlo_image)
+#cc_segmented = segment_breast_tissue(cc_image)
+#mlo_segmented = segment_breast_tissue(mlo_image)
 
 # Create overlays
-cc_overlay = overlay_segmentation(cc_image, cc_segmented)
-mlo_overlay = overlay_segmentation(mlo_image, mlo_segmented)
+#cc_overlay = overlay_segmentation(cc_image, cc_segmented)
+#mlo_overlay = overlay_segmentation(mlo_image, mlo_segmented)
 
-plt.figure(figsize=(12, 12))
+plt.figure(figsize=(16, 9))
 
 plt.subplot(2, 3, 1)
 plt.imshow(cc_image, cmap='gray')
 plt.title('CC Original Image')
 
 plt.subplot(2, 3, 3)
-plt.imshow(cc_segmented, cmap='gray')
+#plt.imshow(cc_segmented, cmap='gray')
 plt.title('CC Segmented Image')
 
 plt.subplot(2, 3, 5)
-plt.imshow(cc_overlay)
+#plt.imshow(cc_overlay)
 plt.title('CC Image with Segmentation Overlay')
 
 plt.subplot(2, 3, 2)
@@ -253,11 +286,11 @@ plt.imshow(mlo_image, cmap='gray')
 plt.title('MLO Original Image')
 
 plt.subplot(2, 3, 4)
-plt.imshow(mlo_segmented, cmap='gray')
+#plt.imshow(mlo_segmented, cmap='gray')
 plt.title('MLO Segmented Image')
 
 plt.subplot(2, 3, 6)
-plt.imshow(mlo_overlay)
+#plt.imshow(mlo_overlay)
 plt.title('MLO Image with Segmentation Overlay')
 
 plt.tight_layout()
