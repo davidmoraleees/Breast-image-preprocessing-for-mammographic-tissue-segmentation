@@ -179,9 +179,8 @@ num_lines = len(mlo_pb_upper) #We want the upper skinline to match one point of 
 furthest_point_mlo[1]+=180. #We add some distance so we are not on the furthest point, now we are on the thickest point.
 thickest_point_mlo=np.copy(furthest_point_mlo)
 
-#parallel_lines, closest_line = draw_reference_and_parallel_lines(mlo_image, mlo_pb, offset_distance, num_lines, thickest_point_mlo)
-closest_line=None
-print(closest_line)
+parallel_lines, closest_line = draw_reference_and_parallel_lines(mlo_image, mlo_pb, offset_distance, num_lines, thickest_point_mlo)
+
 if closest_line is not None:
     parallel_top, parallel_bottom = closest_line
     plt.figure()
@@ -201,11 +200,13 @@ thickest_point_cc=np.copy(furthest_point_cc)
 plt.figure()
 plt.imshow(cc_image, cmap='gray')
 plt.plot(thickest_point_cc[1], thickest_point_cc[0], 'yo')  
+plt.title('CC thickest point')
 plt.show()
 
 plt.figure()
 plt.imshow(mlo_image, cmap='gray')
-plt.plot(thickest_point_mlo[1], thickest_point_mlo[0], 'yo')  
+plt.plot(thickest_point_mlo[1], thickest_point_mlo[0], 'yo')
+plt.title('MLO thickest point')
 plt.show()
 
 
@@ -222,7 +223,7 @@ def calculate_ratios(parallel_lines, reference_line):
         ratios.append(ratio)
     return ratios
 
-#ratios = calculate_ratios(parallel_lines, closest_line)
+ratios = calculate_ratios(parallel_lines, closest_line)
 
 def propagate_ratios(image, skinline, ratios):
     distance_map = distance_transform_edt(skinline)
@@ -238,7 +239,7 @@ def propagate_ratios(image, skinline, ratios):
     
     return corrected_image
 
-#corrected_cc_image = propagate_ratios(cc_image, cc_bpa, ratios)
+corrected_cc_image = propagate_ratios(cc_image, cc_bpa, ratios)
 
 plt.figure(figsize=(12, 12))
 plt.subplot(1, 2, 1)
@@ -246,7 +247,7 @@ plt.imshow(cc_image, cmap='gray')
 plt.title('Original CC Image')
 
 plt.subplot(1, 2, 2)
-#plt.imshow(corrected_cc_image, cmap='gray')
+plt.imshow(corrected_cc_image, cmap='gray')
 plt.title('Corrected CC Image')
 
 plt.show()
@@ -273,15 +274,15 @@ def intensity_balancing(image, ratios, skinline):
     
     return corrected_image
 
-#balanced_cc_image = intensity_balancing(corrected_cc_image, ratios, cc_bpa)
+balanced_cc_image = intensity_balancing(corrected_cc_image, ratios, cc_bpa)
 
 plt.figure(figsize=(12, 12))
 plt.subplot(1, 2, 1)
-#plt.imshow(corrected_cc_image, cmap='gray')
+plt.imshow(corrected_cc_image, cmap='gray')
 plt.title('Corrected CC Image')
 
 plt.subplot(1, 2, 2)
-#plt.imshow(balanced_cc_image, cmap='gray')
+plt.imshow(balanced_cc_image, cmap='gray')
 plt.title('Balanced CC Image')
 
 plt.show()
