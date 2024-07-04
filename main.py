@@ -5,8 +5,8 @@ from scipy.ndimage import distance_transform_edt, binary_fill_holes
 from tqdm import tqdm 
 from skimage.segmentation import clear_border
 
-cc_image = io.imread('INbreast/AllDICOMs_PNG/20586908_6c613a14b80a8591_MG_R_CC_ANON.png', as_gray=True)
-mlo_image = io.imread('INbreast/AllDICOMs_PNG/20586960_6c613a14b80a8591_MG_R_ML_ANON.png', as_gray=True)
+cc_image = io.imread('INbreast/AllDICOMs_PNG/50997304_9054942f7be52dd9_MG_R_CC_ANON.png', as_gray=True)
+mlo_image = io.imread('INbreast/AllDICOMs_PNG/50997250_9054942f7be52dd9_MG_R_ML_ANON.png', as_gray=True)
 
 
 # Breast periphery separation ------------------------------------------------------------------------------
@@ -51,7 +51,7 @@ plt.imshow(cc_image, cmap='gray')
 plt.title('CC Original Image')
 
 plt.subplot(2, 2, 2)
-plt.imshow(cc_bpa, cmap='gray')
+plt.imshow(cc_image, cmap='gray')
 plt.plot(cc_pb[:, 1], cc_pb[:, 0], '-r', linewidth=2)
 plt.title('CC Peripheral Area')
 
@@ -60,7 +60,7 @@ plt.imshow(mlo_image, cmap='gray')
 plt.title('MLO Original Image')
 
 plt.subplot(2, 2, 4)
-plt.imshow(mlo_bpa, cmap='gray')
+plt.imshow(mlo_image, cmap='gray')
 plt.plot(mlo_pb[:, 1], mlo_pb[:, 0], '-r', linewidth=2)
 plt.title('MLO Peripheral Area')
 
@@ -117,7 +117,6 @@ plt.show()
 
 
 # Breast thickness estimation ---------------------------------------------------------------------------------
-# Function to find the furthest point from the chest wall (right side of the image)
 def find_furthest_point_from_chest_wall(skinline, image_width):
     chest_wall_x = image_width - 1  # Assuming the chest wall is at the right edge of the image
     distances = chest_wall_x - skinline[:, 1]
@@ -125,12 +124,10 @@ def find_furthest_point_from_chest_wall(skinline, image_width):
     furthest_point = skinline[furthest_point_index]
     return furthest_point, furthest_point_index
 
-# Function to find the nearest top point in the contour
 def find_nearest_top(skinline):
     top_point_index = np.argmin(skinline[:, 0])
     return skinline[top_point_index]
 
-# Function to find the nearest right point in the contour
 def find_nearest_right(skinline):
     right_point_index = np.argmax(skinline[:, 1])
     return skinline[right_point_index]
@@ -144,7 +141,7 @@ def find_intersection(skinline, slope, intercept):
             return [y, x]
     return None
 
-def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_lines):
+def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_lines, thickest_point):
     top_reference = find_nearest_top(skinline)
     right_reference = find_nearest_right(skinline)
     
@@ -152,20 +149,29 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
     intercept = top_reference[0] - slope * top_reference[1]
     
     parallel_lines = []
+    min_distance = float('inf')
+    closest_line = None
 
     plt.figure(figsize=(12, 12))
     plt.imshow(image, cmap='gray')
     
-    for i in range(num_lines):
+    for i in tqdm(range(num_lines)):
         parallel_intercept = intercept - (i + 1) * offset_distance / np.cos(np.arctan(slope))
         parallel_top = find_intersection(skinline, slope, parallel_intercept)
         parallel_bottom = find_intersection(skinline[::-1], slope, parallel_intercept)
         
         if parallel_top is not None and parallel_bottom is not None:
             plt.plot([parallel_top[1], parallel_bottom[1]], [parallel_top[0], parallel_bottom[0]], '-r', linewidth=2)
-            plt.plot(parallel_top[1], parallel_top[0])
-            plt.plot(parallel_bottom[1], parallel_bottom[0])
             parallel_lines.append((float(parallel_top[1]), float(parallel_bottom[1])))
+
+            distance = np.abs(slope * thickest_point[1] - thickest_point[0] + parallel_intercept) / np.sqrt(slope**2 + 1)
+            if distance < min_distance:
+                min_distance = distance
+                parallel_top[0]=float(parallel_top[0])
+                parallel_top[1]=float(parallel_top[1])
+                parallel_bottom[0]=float(parallel_bottom[0])
+                parallel_bottom[1]=float(parallel_bottom[1])
+                closest_line = (parallel_top, parallel_bottom)
 
     plt.plot([top_reference[1], right_reference[1]], [top_reference[0], right_reference[0]], '-r', linewidth=2)
     plt.plot(top_reference[1], top_reference[0])
@@ -174,7 +180,7 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
     plt.title('MLO Image with Reference and Parallel Lines')
     plt.show()
 
-    return parallel_lines
+    return parallel_lines, closest_line
 
 image_width_mlo = mlo_image.shape[1]
 furthest_point_mlo, furthest_point_index_mlo = find_furthest_point_from_chest_wall(mlo_pb, image_width_mlo)
@@ -182,31 +188,125 @@ mlo_pb_upper = mlo_pb[:furthest_point_index_mlo + 1]
 mlo_pb_lower = mlo_pb[furthest_point_index_mlo:]
 
 plt.figure()
-plt.imshow(mlo_bpa, cmap='gray')
+plt.imshow(mlo_image, cmap='gray')
 plt.plot(mlo_pb_upper[:, 1], mlo_pb_upper[:, 0], '-b', linewidth=2)
 plt.plot(mlo_pb_lower[:, 1], mlo_pb_lower[:, 0], '-g', linewidth=2)
-plt.plot(furthest_point_mlo[1], furthest_point_mlo[0])  
 plt.title('MLO Peripheral Area')
 plt.show()
 
-offset_distance = -501 #Negative value means going left.
-num_lines = 4  
-parallel_lines = draw_reference_and_parallel_lines(mlo_image, mlo_pb, offset_distance, num_lines)
+offset_distance = -1 #Negative value means going left.
+num_lines = len(mlo_pb_upper) #We want the upper skinline to match one point of the lower skinline.
+furthest_point_mlo[1]+=180. #We add some distance so we are not on the furthest point, now we are on the thickest point.
+thickest_point_mlo=np.copy(furthest_point_mlo)
 
-def calculate_thickness_ratios(image, parallel_lines, offset_distance):
-    thickness_ratios = np.zeros_like(image, dtype=np.float64)
-    for x_upper, x_lower in parallel_lines:
-        thickness_ratios[:, int(x_lower):int(x_upper)+1] = 1 / abs(offset_distance) 
-    return thickness_ratios
+parallel_lines, closest_line = draw_reference_and_parallel_lines(mlo_image, mlo_pb, offset_distance, num_lines, thickest_point_mlo)
+print(closest_line)
+if closest_line is not None:
+    parallel_top, parallel_bottom = closest_line
+    plt.figure()
+    plt.imshow(mlo_image, cmap='gray')
+    plt.plot([parallel_top[1], parallel_bottom[1]], [parallel_top[0], parallel_bottom[0]], '-y', linewidth=2)
+    plt.plot(thickest_point_mlo[1], thickest_point_mlo[0], 'yo')
+    plt.title('Closest Parallel Line to Thickest Point')
+    plt.show()
+else:
+    print("No line found close to the thickest point.")
+
+image_width_cc = cc_image.shape[1]
+furthest_point_cc, furthest_point_index_cc = find_furthest_point_from_chest_wall(cc_pb, image_width_cc)
+furthest_point_cc[1]+=180. #We add some distance so we are not on the furthest point, now we are on the thickest point.
+thickest_point_cc=np.copy(furthest_point_cc)
+
+plt.figure()
+plt.imshow(cc_image, cmap='gray')
+plt.plot(thickest_point_cc[1], thickest_point_cc[0], 'yo')  
+plt.show()
+
+plt.figure()
+plt.imshow(mlo_image, cmap='gray')
+plt.plot(thickest_point_mlo[1], thickest_point_mlo[0], 'yo')  
+plt.show()
+
+
+
+
+
+#Esto aún no funciona bien.
+def calculate_length(line):
+    return np.sqrt((line[1][1] - line[0][1])**2 + (line[1][0] - line[0][0])**2)
+
+def calculate_ratios(parallel_lines, reference_line):
+    reference_length = calculate_length(reference_line)
+    ratios = []
+    for line in parallel_lines:
+        line_length = calculate_length(line)
+        ratio = line_length / reference_length
+        ratios.append(ratio)
+    return ratios
+
+ratios = calculate_ratios(parallel_lines, closest_line)
+
+def propagate_ratios(image, skinline, ratios):
+    distance_map = distance_transform_edt(skinline)
+    corrected_image = image.copy()
+    max_distance = distance_map.max()
     
-# Aplicar el cálculo de ratios de espesor
-cc_thickness_ratios = calculate_thickness_ratios(cc_image, parallel_lines, offset_distance)
-mlo_thickness_ratios = calculate_thickness_ratios(mlo_image, parallel_lines, offset_distance)
+    for y in range(image.shape[0]):
+        for x in range(image.shape[1]):
+            distance = distance_map[y, x]
+            if distance > 0:
+                ratio_index = int((distance / max_distance) * (len(ratios) - 1))
+                corrected_image[y, x] *= ratios[ratio_index]
+    
+    return corrected_image
 
+corrected_cc_image = propagate_ratios(cc_image, cc_bpa, ratios)
 
-#Hay que acabar esto, no está acabado.
+plt.figure(figsize=(12, 12))
+plt.subplot(1, 2, 1)
+plt.imshow(cc_image, cmap='gray')
+plt.title('Original CC Image')
 
+plt.subplot(1, 2, 2)
+plt.imshow(corrected_cc_image, cmap='gray')
+plt.title('Corrected CC Image')
 
+plt.show()
+
+def intensity_balancing(image, ratios, skinline):
+    R = np.array(ratios)
+    R_min = R.min()
+    R_max = R.max()
+    R_normalized = (R - R_min) / (R_max - R_min)
+    
+    R_ref = R_normalized.mean()
+
+    distance_map = distance_transform_edt(skinline)
+    corrected_image = image.copy()
+    max_distance = distance_map.max()
+    
+    for y in range(image.shape[0]):
+        for x in range(image.shape[1]):
+            distance = distance_map[y, x]
+            if distance > 0:
+                ratio_index = int((distance / max_distance) * (len(R_normalized) - 1))
+                RP = R_normalized[ratio_index]
+                corrected_image[y, x] *= (1 + (R_ref - RP))
+    
+    return corrected_image
+
+balanced_cc_image = intensity_balancing(corrected_cc_image, ratios, cc_bpa)
+
+plt.figure(figsize=(12, 12))
+plt.subplot(1, 2, 1)
+plt.imshow(corrected_cc_image, cmap='gray')
+plt.title('Corrected CC Image')
+
+plt.subplot(1, 2, 2)
+plt.imshow(balanced_cc_image, cmap='gray')
+plt.title('Balanced CC Image')
+
+plt.show()
 
 
 
@@ -222,7 +322,8 @@ mlo_thickness_ratios = calculate_thickness_ratios(mlo_image, parallel_lines, off
 
 
 # Breast segmentation  -----------------------------------------------------------------------------------------------------------
-# Segmentation based on intensity and geometric features
+
+#Esto aún no funciona bien.
 def segment_breast_tissue(image):
     # Apply histogram equalization for better contrast
     equalized_image = exposure.equalize_hist(image)
