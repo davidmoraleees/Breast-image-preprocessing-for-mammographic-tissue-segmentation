@@ -343,7 +343,7 @@ else:
     print("Ratios were not calculated due to lack of nearest reference line.")
 
 # 4. Intensity balancing -------------------------------------------------------------------------------------------------------------
-
+'''
 def intensity_balancing(image, ratios, skinline):
     R = np.array(ratios)
     R_min = R.min()
@@ -380,7 +380,55 @@ plt.title('Balanced CC Image')
 plt.show()
 
 #Falta acabar esto. No funciona bien.
+'''
 
+def intensity_balancing(image, skinline, ratios):
+    # Calcular Rref
+    R_values = np.array(ratios)
+    Rmin = R_values.min()
+    Rmax = R_values.max()
+    Rref = R_values.mean()
+
+    RP_ref = (Rref - Rmin) / (Rmax - Rmin)
+
+    # Crear un mapa binario a partir de skinline
+    skinline_mask = np.zeros_like(image, dtype=np.uint8)
+    for y, x in skinline:
+        skinline_mask[int(y), int(x)] = 1
+
+    distance_map = distance_transform_edt(skinline_mask)
+    max_distance = distance_map.max()
+    balanced_image = image.copy()
+
+    for y in range(image.shape[0]):
+        for x in range(image.shape[1]):
+            distance = distance_map[y, x]
+            if distance > 0:
+                ratio_index = int((distance / max_distance) * (len(ratios) - 1))
+                RP_xy = (ratios[ratio_index] - Rmin) / (Rmax - Rmin)
+                balanced_image[y, x] *= (1 + (RP_ref - RP_xy))
+
+    return balanced_image
+
+if ratios:
+    balanced_cc_image = intensity_balancing(corrected_cc_image, cc_pb, ratios)
+
+    plt.figure(figsize=(12, 12))
+    plt.subplot(1, 3, 1)
+    plt.imshow(cc_image, cmap='gray')
+    plt.title('Original CC Image')
+
+    plt.subplot(1, 3, 2)
+    plt.imshow(corrected_cc_image, cmap='gray')
+    plt.title('Corrected CC Image')
+
+    plt.subplot(1, 3, 3)
+    plt.imshow(balanced_cc_image, cmap='gray')
+    plt.title('Balanced CC Image')
+
+    plt.show()
+else:
+    print("Ratios were not calculated due to lack of nearest reference line.")
 
 # 5. Breast segmentation  -----------------------------------------------------------------------------------------------------------
 def kmeans_segmentation(image, n_clusters, ref_image=None):
