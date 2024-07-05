@@ -5,8 +5,8 @@ from scipy.ndimage import distance_transform_edt
 from tqdm import tqdm 
 from sklearn.cluster import KMeans
 
-cc_image = io.imread('INbreast/AllDICOMs_PNG/50997304_9054942f7be52dd9_MG_R_CC_ANON.png', as_gray=True) #CC image of a right breast
-mlo_image = io.imread('INbreast/AllDICOMs_PNG/50997250_9054942f7be52dd9_MG_R_ML_ANON.png', as_gray=True) #MLO image of a right breast
+cc_image = plt.imread('INbreast/AllDICOMs_PNG/50997304_9054942f7be52dd9_MG_R_CC_ANON.png') #CC image of a right breast
+mlo_image = plt.imread('INbreast/AllDICOMs_PNG/50997250_9054942f7be52dd9_MG_R_ML_ANON.png') #MLO image of a right breast
 
 ''''
 INDEX 
