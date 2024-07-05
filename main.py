@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage import io, filters, morphology, measure, color
@@ -16,7 +17,6 @@ INDEX
 4. Intensity balancing
 5. Breast segmentation
 '''
-
 
 # 1. Breast periphery separation ------------------------------------------------------------------------------
 def separate_periphery(image): # Function to separate the breast peripheral area (BPA) using Otsu thresholding
@@ -52,6 +52,9 @@ mlo_bpa, mlo_pb = separate_periphery(mlo_image)
 def axis_off(): # Function to configure axis plots
     plt.tick_params(axis='both', which='both', bottom=False, top=False, left=False, right=False, labelbottom=False, labelleft=False)
 
+if not os.path.exists('Output_images'): #We make sure that the output images folder exists.
+    os.makedirs('Output_images')
+
 plt.figure(figsize=(6, 6))
 plt.subplot(2, 2, 1)
 plt.imshow(cc_image, cmap='gray')
@@ -76,7 +79,7 @@ plt.title('MLO Peripheral area')
 axis_off()
 
 plt.tight_layout()
-plt.savefig('separate_periphery.png')
+plt.savefig('Output_images/separate_periphery.png')
 plt.show()
 
 
@@ -126,7 +129,7 @@ plt.title('MLO Corrected image')
 axis_off()
 
 plt.tight_layout()
-plt.savefig('intensity_ratio_propagation.png')
+plt.savefig('Output_images/intensity_ratio_propagation.png')
 plt.show()
 
 
@@ -155,7 +158,7 @@ plt.plot(furthest_point_mlo[1], furthest_point_mlo[0], 'yo')
 plt.title('MLO Peripheral area')
 axis_off()
 plt.tight_layout()
-plt.savefig('MLO_peripheral_area.png')
+plt.savefig('Output_images/MLO_peripheral_area.png')
 plt.show()
 
 def find_nearest_top(skinline): # Function to find the closest point to the top edge of the image.
@@ -230,7 +233,7 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
         print("No line found close to the thickest point.")
 
     plt.tight_layout()
-    plt.savefig('parallel_lines_thickest_point.png')
+    plt.savefig('Output_images/parallel_lines_thickest_point.png')
     plt.show()
 
     return parallel_lines, closest_line
@@ -301,7 +304,7 @@ if ratios:
     axis_off()
 
     plt.tight_layout()
-    plt.savefig('ratios_propagated.png')
+    plt.savefig('Output_images/ratios_propagated.png')
     plt.show()
 else:
     print("Ratios were not calculated due to lack of nearest reference line.")
@@ -362,7 +365,7 @@ if ratios:
     axis_off()
 
     plt.tight_layout()
-    plt.savefig('balanced_images.png')
+    plt.savefig('Output_images/balanced_images.png')
     plt.show()
 else:
     print("Ratios were not calculated due to lack of nearest reference line.")
@@ -411,6 +414,6 @@ plt.title('MLO Processed clustered image')
 axis_off()
 
 plt.tight_layout()
-plt.savefig('Clustering_images.png')
+plt.savefig('Output_images/Clustering_images.png')
 plt.show()
 
