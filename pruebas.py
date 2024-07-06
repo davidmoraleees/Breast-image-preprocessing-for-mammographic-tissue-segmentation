@@ -28,6 +28,9 @@ if not os.path.exists(output_dir):
 image_files_cc = [f for f in os.listdir(input_dir) if f.endswith('.png') and 'R' in f and 'CC' in f]
 image_files_mlo = [f for f in os.listdir(input_dir) if f.endswith('.png') and 'R' in f and 'ML' in f]
 
+image_files_cc = [f for f in image_files_cc[10:] if f.endswith('.png') and 'R' in f and 'CC' in f]
+image_files_mlo = [f for f in image_files_mlo[10:] if f.endswith('.png') and 'R' in f and 'ML' in f]
+
 def axis_off(): # Function to configure axis plots
         plt.tick_params(axis='both', which='both', bottom=False, top=False, left=False, right=False, labelbottom=False, labelleft=False)
 
@@ -143,28 +146,28 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
 
 
     # 3. Breast thickness estimation ---------------------------------------------------------------------------------
-    def find_furthest_point_from_chest_wall(skinline, image_width): 
-        """Function to find the furthest point from the chest wall. It will typically be near the nipple.
+    def find_farthest_point_from_chest_wall(skinline, image_width): 
+        """Function to find the farthest point from the chest wall. It will typically be near the nipple.
         Skinline is used as a synonym of contour in this script"""
         chest_wall_x = image_width - 1  # Chest wall x-coordinate (right edge of image)
         distances = chest_wall_x - skinline[:, 1] # Vector containing the horizontal distances from the chest wall to each point on the skinline
-        furthest_point_index = np.argmax(distances) # Finds the index of the point with the maximum distance
-        furthest_point = skinline[furthest_point_index] # Returns the furthest point and its index
-        return furthest_point, furthest_point_index
+        farthest_point_index = np.argmax(distances) # Finds the index of the point with the maximum distance
+        farthest_point = skinline[farthest_point_index] # Returns the farthest point and its index
+        return farthest_point, farthest_point_index
 
     image_width_cc = cc_image.shape[1]
-    furthest_point_cc, furthest_point_index_cc = find_furthest_point_from_chest_wall(cc_pb, image_width_cc)
+    farthest_point_cc, farthest_point_index_cc = find_farthest_point_from_chest_wall(cc_pb, image_width_cc)
     image_width_mlo = mlo_image.shape[1]
-    furthest_point_mlo, furthest_point_index_mlo = find_furthest_point_from_chest_wall(mlo_pb, image_width_mlo)
+    farthest_point_mlo, farthest_point_index_mlo = find_farthest_point_from_chest_wall(mlo_pb, image_width_mlo)
 
-    mlo_pb_upper = mlo_pb[:furthest_point_index_mlo + 1] # We divide the skinline into an upper skinline and a lower skinline based on the furthest point
-    mlo_pb_lower = mlo_pb[furthest_point_index_mlo:]
+    mlo_pb_upper = mlo_pb[:farthest_point_index_mlo + 1] # We divide the skinline into an upper skinline and a lower skinline based on the farthest point
+    mlo_pb_lower = mlo_pb[farthest_point_index_mlo:]
 
     plt.figure(figsize=(6,6))
     plt.imshow(mlo_bpa, cmap='gray')
     plt.plot(mlo_pb_upper[:, 1], mlo_pb_upper[:, 0], '-b', linewidth=2) # Plot of the x-y coordinates of the upper skinline
     plt.plot(mlo_pb_lower[:, 1], mlo_pb_lower[:, 0], '-g', linewidth=2) # Plot of the x-y coordinates of the lower skinline
-    plt.plot(furthest_point_mlo[1], furthest_point_mlo[0], 'yo') # Plot of the x-y coordinates of the furthest point
+    plt.plot(farthest_point_mlo[1], farthest_point_mlo[0], 'yo') # Plot of the x-y coordinates of the farthest point
     plt.title('MLO Peripheral area')
     axis_off()
     plt.tight_layout()
@@ -203,9 +206,9 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
                     return [y, x]
             return None
 
-    thickest_point_cc=np.copy(furthest_point_cc) # The thickest point is needed to generate the parallel lines
-    thickest_point_cc[1]+=180. # Adding some arbitrary distance so we are not on the furthest point, but on the thickest point
-    thickest_point_mlo=np.copy(furthest_point_mlo)
+    thickest_point_cc=np.copy(farthest_point_cc) # The thickest point is needed to generate the parallel lines
+    thickest_point_cc[1]+=180. # Adding some arbitrary distance so we are not on the farthest point, but on the thickest point
+    thickest_point_mlo=np.copy(farthest_point_mlo)
     thickest_point_mlo[1]+=180. 
 
     def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_lines, thickest_point, output_dir, id_image):
