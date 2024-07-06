@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage import filters, morphology, measure, color
@@ -17,7 +18,7 @@ INDEX
 '''
 
 # 0. General configurations and image loading ---------------------------------------------------------------------
-os.environ['LOKY_MAX_CPU_COUNT'] = '4' # Maximum number of CPU cores. This is set to avoid issues with detecting physical cores
+os.environ['LOKY_MAX_CPU_COUNT'] = '2' # Maximum number of CPU cores. This is set to avoid issues with detecting physical cores
 
 def axis_off(): # Function to configure axis plots
     plt.tick_params(axis='both', which='both', bottom=False, top=False, left=False, right=False, labelbottom=False, labelleft=False)
@@ -102,7 +103,11 @@ def intensity_ratio_propagation(image, periphery, neighborhood_size):
                 ymin = max(0, y-half_size)  # Minimum y-coordinate of the neighborhood
                 ymax = min(cols, y+half_size+1)  # Maximum y-coordinate of the neighborhood
                 neighborhood = image[xmin:xmax, ymin:ymax] # Local neighborhood extraction around the current pixel
-                local_ratio = np.mean(neighborhood) / (image[x, y] + 1e-8) #We add 1e-8 to avoid division by zero.
+                
+                if image[x, y] == 0:
+                    image[x, y] += 1e-5 #Avoid division by zero.
+
+                local_ratio = np.mean(neighborhood) / (image[x, y]) 
                 corrected_image[x, y] *= local_ratio # Adjust the intensity of the current pixel by the local ratio
     
     return corrected_image
@@ -178,21 +183,34 @@ def find_nearest_right(skinline):
 
 def calculate_slope(point1, point2):
     """Function to calculate the slope between two points"""
+    if point1[1] == point2[1]:
+        print('Error. The slope of a vertical line cannot be calculated')
+        sys.exit()
     return (point2[0] - point1[0]) / (point2[1] - point1[1])
 
 def find_intersection(skinline, slope, intercept):
     """Function to find the closest point of intersection of a line with the skinline"""
-    for y, x in skinline:
-        if np.isclose(y, slope * x + intercept, atol=1.0): # atol is the absolute tolerance
-            return [y, x]
-    return None
+    if np.isclose(slope, 0.0, atol=1e-8):  # Avoid division by very small slopes. atol is the absolute tolerance
+        for y, x in skinline:
+            if np.isclose(intercept, y, atol=1.0):  # Check if intercept is close to y
+                return [y, x]
+        print('Error. Intersection could not be calculated because of a division by zero')
+        return None
+    else:
+        for y, x in skinline:
+            if np.isclose(y, slope * x + intercept, atol=1.0):  # Check if (y, x) is close to the line
+                return [y, x]
+        return None
 
 thickest_point_cc=np.copy(furthest_point_cc) # The thickest point is needed to generate the parallel lines
 thickest_point_cc[1]+=180. # Adding some arbitrary distance so we are not on the furthest point, but on the thickest point
 thickest_point_mlo=np.copy(furthest_point_mlo)
-thickest_point_mlo[1]+=180. # Adding some arbitrary distance so we are not on the furthest point, but on the thickest point
+thickest_point_mlo[1]+=180. 
 
 def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_lines, thickest_point, output_dir, id_image):
+    """Function to: draw a parallel line between the nearest point to the top boundary of the image and the
+       nearest point to the right boundary of the image, draw parallel lines based on the slope of the first
+       one and find the closest parallel line that intercepts the thickest point"""
     top_reference = find_nearest_top(skinline) # Nearest point to the top boundary of the image
     right_reference = find_nearest_right(skinline) # Nearest point to the right boundary of the image
     
@@ -209,21 +227,21 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
     
     for i in tqdm(range(num_lines)):
         parallel_intercept = intercept - (i + 1) * offset_distance / np.cos(np.arctan(slope))
-        parallel_top = find_intersection(skinline, slope, parallel_intercept) # Find intersection points of the parallel line with the skinline and its reverse
+        parallel_top = find_intersection(skinline, slope, parallel_intercept) # Intersection points of the parallel line with the skinline
         parallel_bottom = find_intersection(skinline[::-1], slope, parallel_intercept)
         
         if parallel_top is not None and parallel_bottom is not None:
             plt.plot([parallel_top[1], parallel_bottom[1]], [parallel_top[0], parallel_bottom[0]], '-r', linewidth=2)
             parallel_lines.append((parallel_top, parallel_bottom))
 
-            distance = np.abs(slope * thickest_point[1] - thickest_point[0] + parallel_intercept) / np.sqrt(slope**2 + 1)
+            distance = np.abs(slope * thickest_point[1] - thickest_point[0] + parallel_intercept) / np.sqrt(slope**2 + 1)  # Distance from thickest point to the closest parallel line
             if distance < min_distance:
                 min_distance = distance
-                parallel_top = [float(parallel_top[0]), float(parallel_top[1])]
+                parallel_top = [float(parallel_top[0]), float(parallel_top[1])] 
                 parallel_bottom = [float(parallel_bottom[0]), float(parallel_bottom[1])]
-                closest_line = (parallel_top, parallel_bottom)
+                closest_line = (parallel_top, parallel_bottom) # If the line is closer, we update the variable
 
-    plt.plot([top_reference[1], right_reference[1]], [top_reference[0], right_reference[0]], '-r', linewidth=2)
+    plt.plot([top_reference[1], right_reference[1]], [top_reference[0], right_reference[0]], '-r', linewidth=2) 
     plt.plot(top_reference[1], top_reference[0])
     plt.plot(right_reference[1], right_reference[0])
     
@@ -234,8 +252,8 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
         parallel_top, parallel_bottom = closest_line
         plt.subplot(1, 2, 2)
         plt.imshow(mlo_bpa, cmap='gray')
-        plt.plot([parallel_top[1], parallel_bottom[1]], [parallel_top[0], parallel_bottom[0]], '-y', linewidth=2)
-        plt.plot(thickest_point_mlo[1], thickest_point_mlo[0], 'yo')
+        plt.plot([parallel_top[1], parallel_bottom[1]], [parallel_top[0], parallel_bottom[0]], '-y', linewidth=2) # Plot of the closest parallel line
+        plt.plot(thickest_point_mlo[1], thickest_point_mlo[0], 'yo') # Plot of the thickest point
         plt.title('Closest parallel line to thickest point')
         axis_off()
     else:
@@ -251,14 +269,21 @@ offset_distance = -1 #Negative value means going left in the image.
 num_lines = len(mlo_pb_upper) #We want every point in the upper skinline to match one point of the lower skinline.
 parallel_lines, closest_line = draw_reference_and_parallel_lines(mlo_bpa, mlo_pb, offset_distance, num_lines, thickest_point_mlo, output_dir, id_image)
 
+#Now we have to calculate the intensity ratios and propagate them. Various functions are defined:
 def calculate_length(line):
+    """Function to calculate the length of a given line"""
     return np.sqrt((line[1][1] - line[0][1])**2 + (line[1][0] - line[0][0])**2)
 
 def calculate_ratios(parallel_lines, reference_line):
-    reference_length = calculate_length(reference_line)
-    ratios = []
+    """Function to calculate the ratios between a set of parallel lines and a reference line"""
+    reference_length = calculate_length(reference_line) # Length of the reference line
+    ratios = [] # Initialization
     for line in parallel_lines:
-        line_length = calculate_length(line)
+        line_length = calculate_length(line) # Length of every parallel line
+
+        if reference_length == 0: #Avoid division by zero
+            reference_length += 1e-5
+        
         ratio = line_length / reference_length
         ratios.append(ratio)
     return ratios
@@ -269,21 +294,22 @@ else:
     ratios = []
 
 def propagate_ratios(image, skinline, ratios):
-    # Crear un mapa binario a partir de skinline
+    """Function that propagates a set of intensity ratios across a given image, based on the distance from
+    every pixel its closest skinline point"""
     skinline_mask = np.zeros_like(image, dtype=np.uint8)
-    for y, x in skinline:
-        skinline_mask[int(y), int(x)] = 1
+    for x, y in skinline:
+        skinline_mask[int(x), int(y)] = 1 # Binary mask of the skinline
 
-    distance_map = distance_transform_edt(skinline_mask)
+    distance_map = distance_transform_edt(skinline_mask) # Distance transform of the skinline mask
     ratios_propagated = image.copy()
     max_distance = distance_map.max()
 
-    for y in range(image.shape[0]):
-        for x in range(image.shape[1]):
-            distance = distance_map[y, x]
-            if distance > 0:
+    for x in range(image.shape[0]):
+        for y in range(image.shape[1]):
+            distance = distance_map[x, y]
+            if distance > 0 and max_distance != 0:
                 ratio_index = int((distance / max_distance) * (len(ratios) - 1))
-                ratios_propagated[y, x] *= ratios[ratio_index]
+                ratios_propagated[x, y] *= ratios[ratio_index] # Ratios propagation 
 
     return ratios_propagated
 
@@ -316,35 +342,37 @@ if ratios:
     plt.savefig(os.path.join(output_dir, f'ratios_propagated_{id_image}.png'))
     plt.show()
 else:
-    print("Ratios were not calculated due to lack of nearest reference line.")
+    print("Ratios could not be calculated. The closest line to the thickest point is missing.")
 
 
 # 4. Intensity balancing -------------------------------------------------------------------------------------------------------------
 def intensity_balancing(image, skinline, ratios):
-    # Calcular Rref
+    """Function to balance the intensity of an image based on the distance from every pixel to its closest
+    skinline point, using a set of input ratios. The goal is to achieve uniformity"""
     R_values = np.array(ratios)
     Rmin = R_values.min()
     Rmax = R_values.max()
     Rref = R_values.mean()
 
-    RP_ref = (Rref - Rmin) / (Rmax - Rmin)
+    if Rmax == Rmin: # Avoid division by zero
+        Rmin += 1e-5
+    RP_ref = (Rref - Rmin) / (Rmax - Rmin) # Reference ratio normalization
 
-    # Crear un mapa binario a partir de skinline
-    skinline_mask = np.zeros_like(image, dtype=np.uint8)
-    for y, x in skinline:
-        skinline_mask[int(y), int(x)] = 1
+    skinline_mask = np.zeros_like(image, dtype=np.uint8) 
+    for x, y in skinline:
+        skinline_mask[int(x), int(y)] = 1 # Binary mask of the skinline
 
-    distance_map = distance_transform_edt(skinline_mask)
+    distance_map = distance_transform_edt(skinline_mask) # Distance transform from the skinline mask
     max_distance = distance_map.max()
     balanced_image = image.copy()
 
-    for y in range(image.shape[0]):
-        for x in range(image.shape[1]):
-            distance = distance_map[y, x]
-            if distance > 0:
+    for x in range(image.shape[0]):
+        for y in range(image.shape[1]):
+            distance = distance_map[x, y]
+            if distance > 0 and max_distance != 0:
                 ratio_index = int((distance / max_distance) * (len(ratios) - 1))
                 RP_xy = (ratios[ratio_index] - Rmin) / (Rmax - Rmin)
-                balanced_image[y, x] *= (1 + (RP_ref - RP_xy))
+                balanced_image[x, y] *= (1 + (RP_ref - RP_xy)) # Adjust pixel intensity based on distance to skinline
 
     return balanced_image
 
@@ -377,22 +405,25 @@ if ratios:
     plt.savefig(os.path.join(output_dir, f'balanced_images_{id_image}.png'))
     plt.show()
 else:
-    print("Ratios were not calculated due to lack of nearest reference line.")
+    print("Ratios could not be calculated. The closest line to the thickest point is missing.")
 
 
 # 5. Breast segmentation  -----------------------------------------------------------------------------------------------------------
 def kmeans_segmentation(image, n_clusters, ref_image=None):
+    """Function that applies K-Means clustering to an image. Optionally, a reference image can be specified
+       to ensure consistent colors across clustered images of the same patient. By default, ref_image is
+       set to None"""
     flat_image = image.reshape((-1, 1))  
     
-    if ref_image is not None: # We make sure that both images start with the same centroids. Otherwise, colours are swapped.                         
+    if ref_image is not None:                         
         flat_ref_image = ref_image.reshape((-1, 1))
-        initial_centers = KMeans(n_clusters=n_clusters, init='k-means++', n_init=1, random_state=0).fit(flat_ref_image).cluster_centers_
+        initial_centers = KMeans(n_clusters=n_clusters, init='k-means++', n_init=1, random_state=0).fit(flat_ref_image).cluster_centers_ # Initialize K-means with centroids from the reference image
     else:
         initial_centers = KMeans(n_clusters=n_clusters, init='k-means++', n_init=1, random_state=0).fit(flat_image).cluster_centers_
     
-    kmn = KMeans(n_clusters=n_clusters, init=initial_centers, n_init=1, random_state=0).fit(flat_image)
+    kmn = KMeans(n_clusters=n_clusters, init=initial_centers, n_init=1, random_state=0).fit(flat_image) # K-Means using the initial centroids
     labels_image = kmn.predict(flat_image)
-    clustered_image = np.reshape(labels_image, [image.shape[0], image.shape[1]]) + 1
+    clustered_image = np.reshape(labels_image, [image.shape[0], image.shape[1]]) + 1 # We add +1 so labels start at 1, instead of starting at 0
     colored_clustered_image = color.label2rgb(clustered_image, colors=['black', 'red', 'darkblue', 'yellow', 'gray'], bg_label=0)
     return colored_clustered_image
 
