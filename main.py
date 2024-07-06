@@ -191,15 +191,15 @@ def calculate_slope(point1, point2):
 def find_intersection(skinline, slope, intercept):
     """Function to find the closest point of intersection of a line with the skinline"""
     if np.isclose(slope, 0.0, atol=1e-8):  # Avoid division by very small slopes. atol is the absolute tolerance
-        for y, x in skinline:
-            if np.isclose(intercept, y, atol=1.0):  # Check if intercept is close to y
-                return [y, x]
+        for x, y in skinline:
+            if np.isclose(intercept, x, atol=1.0):  # Check if intercept is close to y
+                return [x, y]
         print('Error. Intersection could not be calculated because of a division by zero')
         return None
     else:
-        for y, x in skinline:
-            if np.isclose(y, slope * x + intercept, atol=1.0):  # Check if (y, x) is close to the line
-                return [y, x]
+        for x, y in skinline:
+            if np.isclose(x, slope * y + intercept, atol=1.0):  # Check if (x, y) is close to the line
+                return [x, y]
         return None
 
 thickest_point_cc=np.copy(furthest_point_cc) # The thickest point is needed to generate the parallel lines

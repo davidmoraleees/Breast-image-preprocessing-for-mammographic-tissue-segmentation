@@ -27,6 +27,9 @@ if not os.path.exists(output_dir):
 image_files_cc = [f for f in os.listdir(input_dir) if f.endswith('.png') and 'R' in f and 'CC' in f]
 image_files_mlo = [f for f in os.listdir(input_dir) if f.endswith('.png') and 'R' in f and 'ML' in f]
 
+image_files_cc = [f for f in image_files_cc[10:] if f.endswith('.png') and 'R' in f and 'CC' in f]
+image_files_mlo = [f for f in image_files_mlo[10:] if f.endswith('.png') and 'R' in f and 'ML' in f]
+
 def axis_off(): # Function to configure axis plots
         plt.tick_params(axis='both', which='both', bottom=False, top=False, left=False, right=False, labelbottom=False, labelleft=False)
 
