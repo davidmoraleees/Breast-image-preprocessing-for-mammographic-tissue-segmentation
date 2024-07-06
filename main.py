@@ -1,5 +1,4 @@
 import os
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage import filters, morphology, measure, color
@@ -23,7 +22,7 @@ os.environ['LOKY_MAX_CPU_COUNT'] = '2' # Maximum number of CPU cores. This is se
 def axis_off(): # Function to configure axis plots
     plt.tick_params(axis='both', which='both', bottom=False, top=False, left=False, right=False, labelbottom=False, labelleft=False)
 
-output_dir = 'Output_images_proves'
+output_dir = 'Output_images_main'
 if not os.path.exists(output_dir): # We make sure that the output images folder exists
     os.makedirs(output_dir)  
 
@@ -185,7 +184,7 @@ def calculate_slope(point1, point2):
     """Function to calculate the slope between two points"""
     if point1[1] == point2[1]:
         print('Error. The slope of a vertical line cannot be calculated')
-        sys.exit()
+        return None
     return (point2[0] - point1[0]) / (point2[1] - point1[1])
 
 def find_intersection(skinline, slope, intercept):
@@ -215,8 +214,12 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
     right_reference = find_nearest_right(skinline) # Nearest point to the right boundary of the image
     
     slope = calculate_slope(top_reference, right_reference) # Slope of the line connecting top_reference and right_reference
-    intercept = top_reference[0] - slope * top_reference[1] # Intercept of the line
     
+    if slope is None:
+            intercept = None
+    else:
+        intercept = top_reference[0] - slope * top_reference[1] # Intercept of the line
+
     parallel_lines = [] # Initialization of the variable.
     min_distance = float(10**8) # Initialization of the variable.
     closest_line = None # Variable to store the closest parallel line to the thickest point.
@@ -226,10 +229,15 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
     plt.imshow(image, cmap='gray')
     
     for i in tqdm(range(num_lines)):
-        parallel_intercept = intercept - (i + 1) * offset_distance / np.cos(np.arctan(slope))
-        parallel_top = find_intersection(skinline, slope, parallel_intercept) # Intersection points of the parallel line with the skinline
-        parallel_bottom = find_intersection(skinline[::-1], slope, parallel_intercept)
-        
+        if intercept is None:
+                parallel_intercept = None
+                parallel_top = None
+                parallel_bottom = None
+        else:
+            parallel_intercept = intercept - (i + 1) * offset_distance / np.cos(np.arctan(slope))
+            parallel_top = find_intersection(skinline, slope, parallel_intercept) # Intersection points of the parallel line with the skinline
+            parallel_bottom = find_intersection(skinline[::-1], slope, parallel_intercept)
+            
         if parallel_top is not None and parallel_bottom is not None:
             plt.plot([parallel_top[1], parallel_bottom[1]], [parallel_top[0], parallel_bottom[0]], '-r', linewidth=2)
             parallel_lines.append((parallel_top, parallel_bottom))
@@ -313,24 +321,24 @@ def propagate_ratios(image, skinline, ratios):
 
     return ratios_propagated
 
+plt.figure(figsize=(6, 6))
+plt.subplot(2, 2, 1)
+plt.imshow(cc_image, cmap='gray')
+plt.title('CC Original image')
+axis_off()
+
+plt.subplot(2, 2, 3)
+plt.imshow(mlo_image, cmap='gray')
+plt.title('MLO Original image')
+axis_off()
+
 if ratios:
     ratios_propagated_cc = propagate_ratios(cc_corrected, cc_pb, ratios)
     ratios_propagated_mlo = propagate_ratios(mlo_corrected, mlo_pb, ratios)
 
-    plt.figure(figsize=(6, 6))
-    plt.subplot(2, 2, 1)
-    plt.imshow(cc_image, cmap='gray')
-    plt.title('CC Original image')
-    axis_off()
-
     plt.subplot(2, 2, 2)
     plt.imshow(ratios_propagated_cc, cmap='gray')
     plt.title('CC Ratios propagated image')
-    axis_off()
-
-    plt.subplot(2, 2, 3)
-    plt.imshow(mlo_image, cmap='gray')
-    plt.title('MLO Original image')
     axis_off()
 
     plt.subplot(2, 2, 4)
@@ -338,11 +346,12 @@ if ratios:
     plt.title('MLO Ratios propagated image')
     axis_off()
 
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, f'ratios_propagated_{id_image}.png'))
-    plt.show()
 else:
     print("Ratios could not be calculated. The closest line to the thickest point is missing.")
+    
+plt.tight_layout()
+plt.savefig(os.path.join(output_dir, f'ratios_propagated_{id_image}.png'))
+plt.show()
 
 
 # 4. Intensity balancing -------------------------------------------------------------------------------------------------------------
@@ -376,24 +385,24 @@ def intensity_balancing(image, skinline, ratios):
 
     return balanced_image
 
+plt.figure(figsize=(6, 6))
+plt.subplot(2, 2, 1)
+plt.imshow(cc_image, cmap='gray')
+plt.title('CC Original image')
+axis_off()
+
+plt.subplot(2, 2, 3)
+plt.imshow(mlo_image, cmap='gray')
+plt.title('MLO Original image')
+axis_off()
+
 if ratios:
     balanced_cc_image = intensity_balancing(ratios_propagated_cc, cc_pb, ratios)
     balanced_mlo_image = intensity_balancing(ratios_propagated_mlo, mlo_pb, ratios)
 
-    plt.figure(figsize=(6, 6))
-    plt.subplot(2, 2, 1)
-    plt.imshow(cc_image, cmap='gray')
-    plt.title('CC Original image')
-    axis_off()
-
     plt.subplot(2, 2, 2)
     plt.imshow(balanced_cc_image, cmap='gray')
     plt.title('CC Balanced image')
-    axis_off()
-
-    plt.subplot(2, 2, 3)
-    plt.imshow(mlo_image, cmap='gray')
-    plt.title('MLO Original image')
     axis_off()
 
     plt.subplot(2, 2, 4)
@@ -401,11 +410,12 @@ if ratios:
     plt.title('MLO Balanced image')
     axis_off()
 
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, f'balanced_images_{id_image}.png'))
-    plt.show()
 else:
     print("Ratios could not be calculated. The closest line to the thickest point is missing.")
+
+plt.tight_layout()
+plt.savefig(os.path.join(output_dir, f'balanced_images_{id_image}.png'))
+plt.show()
 
 
 # 5. Breast segmentation  -----------------------------------------------------------------------------------------------------------
@@ -429,8 +439,6 @@ def kmeans_segmentation(image, n_clusters, ref_image=None):
 
 colored_clustered_image_cc = kmeans_segmentation(cc_image, 5)
 colored_clustered_image_mlo = kmeans_segmentation(mlo_image, 5, ref_image=cc_image)
-colored_clustered_image_cc_balanced = kmeans_segmentation(balanced_cc_image, 5, ref_image=cc_image)
-colored_clustered_image_mlo_balanced = kmeans_segmentation(balanced_mlo_image, 5, ref_image=cc_image)
 
 plt.figure(figsize=(6,6))
 plt.subplot(2,2,1)
@@ -438,22 +446,28 @@ plt.imshow(colored_clustered_image_cc)
 plt.title('CC Unprocessed clustered image')
 axis_off()
 
-plt.subplot(2,2,2)
-plt.imshow(colored_clustered_image_cc_balanced)
-plt.title('CC Processed clustered image')
-axis_off()
-
 plt.subplot(2,2,3)
 plt.imshow(colored_clustered_image_mlo)
 plt.title('MLO Unprocessed clustered image')
 axis_off()
 
-plt.subplot(2,2,4)
-plt.imshow(colored_clustered_image_mlo_balanced)
-plt.title('MLO Processed clustered image')
-axis_off()
+if ratios:
+    colored_clustered_image_cc_balanced = kmeans_segmentation(balanced_cc_image, 5, ref_image=cc_image)
+    colored_clustered_image_mlo_balanced = kmeans_segmentation(balanced_mlo_image, 5, ref_image=cc_image)     
+
+    plt.subplot(2,2,2)
+    plt.imshow(colored_clustered_image_cc_balanced)
+    plt.title('CC Processed clustered image')
+    axis_off()
+
+    plt.subplot(2,2,4)
+    plt.imshow(colored_clustered_image_mlo_balanced)
+    plt.title('MLO Processed clustered image')
+    axis_off()
+
+else:
+    print("Ratios could not be calculated. The closest line to the thickest point is missing.")
 
 plt.tight_layout()
 plt.savefig(os.path.join(output_dir, f'clustering_images_{id_image}.png'))
 plt.show()
-
