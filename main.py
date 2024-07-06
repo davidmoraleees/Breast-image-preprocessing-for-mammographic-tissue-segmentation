@@ -6,8 +6,17 @@ from scipy.ndimage import distance_transform_edt
 from tqdm import tqdm 
 from sklearn.cluster import KMeans
 
-cc_image = plt.imread('INbreast/AllDICOMs_PNG/50997304_9054942f7be52dd9_MG_R_CC_ANON.png') #CC image of a right breast
-mlo_image = plt.imread('INbreast/AllDICOMs_PNG/50997250_9054942f7be52dd9_MG_R_ML_ANON.png') #MLO image of a right breast
+
+filename_cc = '53581264_80123a24997098dc_MG_R_CC_ANON.png' #CC image of a right breast
+filename_mlo = '53581237_80123a24997098dc_MG_R_ML_ANON.png' #MLO image of a right breast
+
+id_image = filename_cc[:-17]
+
+cc_image_path = os.path.join('INbreast/AllDICOMs_PNG', filename_cc)
+mlo_image_path = os.path.join('INbreast/AllDICOMs_PNG', filename_mlo)
+
+cc_image = plt.imread(cc_image_path)
+mlo_image = plt.imread(mlo_image_path)
 
 ''''
 INDEX 
@@ -52,8 +61,9 @@ mlo_bpa, mlo_pb = separate_periphery(mlo_image)
 def axis_off(): # Function to configure axis plots
     plt.tick_params(axis='both', which='both', bottom=False, top=False, left=False, right=False, labelbottom=False, labelleft=False)
 
-if not os.path.exists('Output_images'): #We make sure that the output images folder exists.
-    os.makedirs('Output_images')
+output_dir = 'Output_images'
+if not os.path.exists(output_dir): # We make sure that the output images folder exists
+    os.makedirs(output_dir)  
 
 plt.figure(figsize=(6, 6))
 plt.subplot(2, 2, 1)
@@ -79,7 +89,7 @@ plt.title('MLO Peripheral area')
 axis_off()
 
 plt.tight_layout()
-plt.savefig('Output_images/separate_periphery.png')
+plt.savefig(os.path.join(output_dir, f'separate_periphery_{id_image}.png'))
 plt.show()
 
 
@@ -129,7 +139,7 @@ plt.title('MLO Corrected image')
 axis_off()
 
 plt.tight_layout()
-plt.savefig('Output_images/intensity_ratio_propagation.png')
+plt.savefig(os.path.join(output_dir, f'intensity_ratio_propagation_{id_image}.png'))
 plt.show()
 
 
@@ -158,7 +168,7 @@ plt.plot(furthest_point_mlo[1], furthest_point_mlo[0], 'yo')
 plt.title('MLO Peripheral area')
 axis_off()
 plt.tight_layout()
-plt.savefig('Output_images/MLO_peripheral_area.png')
+plt.savefig(os.path.join(output_dir, f'MLO_peripheral_area_{id_image}.png'))
 plt.show()
 
 def find_nearest_top(skinline): # Function to find the closest point to the top edge of the image.
@@ -183,7 +193,7 @@ thickest_point_cc[1]+=180. # We add some distance so we are not on the furthest 
 thickest_point_mlo=np.copy(furthest_point_mlo)
 thickest_point_mlo[1]+=180. 
 
-def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_lines, thickest_point):
+def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_lines, thickest_point, output_dir, id_image):
     top_reference = find_nearest_top(skinline)
     right_reference = find_nearest_right(skinline)
     
@@ -233,14 +243,14 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
         print("No line found close to the thickest point.")
 
     plt.tight_layout()
-    plt.savefig('Output_images/parallel_lines_thickest_point.png')
+    plt.savefig(os.path.join(output_dir, f'parallel_lines_thickest_point_{id_image}.png'))
     plt.show()
 
     return parallel_lines, closest_line
 
 offset_distance = -1 #Negative value means going left.
 num_lines = len(mlo_pb_upper) #We want the upper skinline to match one point of the lower skinline.
-parallel_lines, closest_line = draw_reference_and_parallel_lines(mlo_bpa, mlo_pb, offset_distance, num_lines, thickest_point_mlo)
+parallel_lines, closest_line = draw_reference_and_parallel_lines(mlo_bpa, mlo_pb, offset_distance, num_lines, thickest_point_mlo, output_dir, id_image)
 
 def calculate_length(line):
     return np.sqrt((line[1][1] - line[0][1])**2 + (line[1][0] - line[0][0])**2)
@@ -304,7 +314,7 @@ if ratios:
     axis_off()
 
     plt.tight_layout()
-    plt.savefig('Output_images/ratios_propagated.png')
+    plt.savefig(os.path.join(output_dir, f'ratios_propagated_{id_image}.png'))
     plt.show()
 else:
     print("Ratios were not calculated due to lack of nearest reference line.")
@@ -365,7 +375,7 @@ if ratios:
     axis_off()
 
     plt.tight_layout()
-    plt.savefig('Output_images/balanced_images.png')
+    plt.savefig(os.path.join(output_dir, f'balanced_images_{id_image}.png'))
     plt.show()
 else:
     print("Ratios were not calculated due to lack of nearest reference line.")
@@ -414,6 +424,6 @@ plt.title('MLO Processed clustered image')
 axis_off()
 
 plt.tight_layout()
-plt.savefig('Output_images/Clustering_images.png')
+plt.savefig(os.path.join(output_dir, f'clustering_images_{id_image}.png'))
 plt.show()
 
