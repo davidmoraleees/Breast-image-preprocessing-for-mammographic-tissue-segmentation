@@ -6,10 +6,20 @@ from scipy.ndimage import distance_transform_edt
 from tqdm import tqdm 
 from sklearn.cluster import KMeans
 
+''''
+INDEX 
+1. Breast periphery separation
+2. Intensity ratio propagation
+3. Breast thickness estimation
+4. Intensity balancing
+5. Breast segmentation
+'''
+
+# 0. General configurations and image loading ---------------------------------------------------------------------
+os.environ['LOKY_MAX_CPU_COUNT'] = '2' # Maximum number of CPU cores. This is set to avoid issues with detecting physical cores
+
 input_dir = 'INbreast/AllDICOMs_PNG'
 output_dir = 'Output_images'
-
-os.environ['LOKY_MAX_CPU_COUNT'] = '2'
 
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
@@ -17,7 +27,10 @@ if not os.path.exists(output_dir):
 image_files_cc = [f for f in os.listdir(input_dir) if f.endswith('.png') and 'R' in f and 'CC' in f]
 image_files_mlo = [f for f in os.listdir(input_dir) if f.endswith('.png') and 'R' in f and 'ML' in f]
 
-for filename_cc, filename_mlo in tqdm(zip(image_files_cc, image_files_mlo)):
+def axis_off(): # Function to configure axis plots
+        plt.tick_params(axis='both', which='both', bottom=False, top=False, left=False, right=False, labelbottom=False, labelleft=False)
+
+for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
     id_image = filename_cc[:-17] 
     
     cc_image_path = os.path.join(input_dir, filename_cc)
@@ -26,19 +39,7 @@ for filename_cc, filename_mlo in tqdm(zip(image_files_cc, image_files_mlo)):
     cc_image = plt.imread(cc_image_path)
     mlo_image = plt.imread(mlo_image_path)
 
-    ''''
-    INDEX 
-    1. Breast periphery separation
-    2. Intensity ratio propagation
-    3. Breast thickness estimation
-    4. Intensity balancing
-    5. Breast segmentation
-    '''
-
     # 1. Breast periphery separation ------------------------------------------------------------------------------
-    def axis_off(): # Function to configure axis plots
-        plt.tick_params(axis='both', which='both', bottom=False, top=False, left=False, right=False, labelbottom=False, labelleft=False)
-
     def separate_periphery(image):
         """Function to separate the breast peripheral area (BPA)"""
         otsu_thresh = filters.threshold_otsu(image) # Optimal intensity threshold using Otsu's method
