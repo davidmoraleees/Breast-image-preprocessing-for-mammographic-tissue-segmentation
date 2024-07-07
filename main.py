@@ -26,8 +26,8 @@ output_dir = 'Output_images_main'
 if not os.path.exists(output_dir): # We make sure that the output images folder exists
     os.makedirs(output_dir)  
 
-filename_cc = '53581264_80123a24997098dc_MG_R_CC_ANON.png' # CC image of a right breast
-filename_mlo = '53581237_80123a24997098dc_MG_R_ML_ANON.png' # MLO image of a right breast
+filename_cc = '20587902_8dbbd4e51f549ff0_MG_R_CC_ANON.png' # CC image of a right breast
+filename_mlo = '20587928_8dbbd4e51f549ff0_MG_R_ML_ANON.png' # MLO image of a right breast
 
 id_image = filename_cc[:-17] # ID to identify every patient
 
@@ -116,23 +116,23 @@ mlo_corrected = intensity_ratio_propagation(mlo_image, mlo_bpa, 17)
  
 plt.figure(figsize=(6, 6))
 plt.subplot(2, 2, 1)
-plt.imshow(cc_image, cmap='gray')
-plt.title('CC Original image')
-axis_off()
-
-plt.subplot(2, 2, 2)
 plt.imshow(cc_corrected, cmap='gray')
 plt.title('CC Corrected image')
 axis_off()
 
+plt.subplot(2, 2, 2)
+plt.imshow(np.abs(cc_image-cc_corrected), cmap='gray')
+plt.title('CC Difference')
+axis_off()
+
 plt.subplot(2, 2, 3)
-plt.imshow(mlo_image, cmap='gray')
-plt.title('MLO Original image')
+plt.imshow(mlo_corrected, cmap='gray')
+plt.title('MLO Corrected image')
 axis_off()
 
 plt.subplot(2, 2, 4)
-plt.imshow(mlo_corrected, cmap='gray')
-plt.title('MLO Corrected image')
+plt.imshow(np.abs(mlo_image-mlo_corrected), cmap='gray')
+plt.title('MLO Difference')
 axis_off()
 
 plt.tight_layout()
@@ -323,30 +323,20 @@ def apply_length_ratios(image, skinline, ratios):
     return ratios_propagated
 
 plt.figure(figsize=(6, 6))
-plt.subplot(2, 2, 1)
-plt.imshow(cc_image, cmap='gray')
-plt.title('CC Original image')
-axis_off()
-
-plt.subplot(2, 2, 3)
-plt.imshow(mlo_image, cmap='gray')
-plt.title('MLO Original image')
-axis_off()
 
 if ratios:
     ratios_propagated_cc = apply_length_ratios(cc_corrected, cc_pb, ratios)
     ratios_propagated_mlo = apply_length_ratios(mlo_corrected, mlo_pb, ratios)
 
-    plt.subplot(2, 2, 2)
+    plt.subplot(1, 2, 1)
     plt.imshow(ratios_propagated_cc, cmap='gray')
-    plt.title('CC Ratios propagated image')
+    plt.title('CC Length ratios')
     axis_off()
 
-    plt.subplot(2, 2, 4)
+    plt.subplot(1, 2, 2)
     plt.imshow(ratios_propagated_mlo, cmap='gray')
-    plt.title('MLO Ratios propagated image')
+    plt.title('MLO Length ratios')
     axis_off()
-
 else:
     print("Ratios could not be propagated. The closest line to the thickest point is missing.")
     
@@ -387,30 +377,20 @@ def intensity_balancing(image, skinline, ratios):
     return balanced_image
 
 plt.figure(figsize=(6, 6))
-plt.subplot(2, 2, 1)
-plt.imshow(cc_image, cmap='gray')
-plt.title('CC Original image')
-axis_off()
-
-plt.subplot(2, 2, 3)
-plt.imshow(mlo_image, cmap='gray')
-plt.title('MLO Original image')
-axis_off()
 
 if ratios:
     balanced_cc_image = intensity_balancing(ratios_propagated_cc, cc_pb, ratios)
     balanced_mlo_image = intensity_balancing(ratios_propagated_mlo, mlo_pb, ratios)
 
-    plt.subplot(2, 2, 2)
+    plt.subplot(1, 2, 1)
     plt.imshow(balanced_cc_image, cmap='gray')
     plt.title('CC Balanced image')
     axis_off()
 
-    plt.subplot(2, 2, 4)
+    plt.subplot(1, 2, 2)
     plt.imshow(balanced_mlo_image, cmap='gray')
     plt.title('MLO Balanced image')
     axis_off()
-
 else:
     print("Balanced images could not be calculated. The closest line to the thickest point is missing.")
 
@@ -444,12 +424,12 @@ colored_clustered_image_mlo = kmeans_segmentation(mlo_image, 5, ref_image=cc_ima
 plt.figure(figsize=(6,6))
 plt.subplot(2,2,1)
 plt.imshow(colored_clustered_image_cc)
-plt.title('CC Unprocessed clustered image')
+plt.title('CC Unprocessed clusters')
 axis_off()
 
 plt.subplot(2,2,3)
 plt.imshow(colored_clustered_image_mlo)
-plt.title('MLO Unprocessed clustered image')
+plt.title('MLO Unprocessed clusters')
 axis_off()
 
 if ratios:
@@ -458,12 +438,12 @@ if ratios:
 
     plt.subplot(2,2,2)
     plt.imshow(colored_clustered_image_cc_balanced)
-    plt.title('CC Processed clustered image')
+    plt.title('CC Processed clusters')
     axis_off()
 
     plt.subplot(2,2,4)
     plt.imshow(colored_clustered_image_mlo_balanced)
-    plt.title('MLO Processed clustered image')
+    plt.title('MLO Processed clusters')
     axis_off()
 
 else:
