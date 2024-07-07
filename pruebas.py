@@ -27,8 +27,8 @@ if not os.path.exists(output_dir):
 image_files_cc = [f for f in os.listdir(input_dir) if f.endswith('.png') and 'R' in f and 'CC' in f]
 image_files_mlo = [f for f in os.listdir(input_dir) if f.endswith('.png') and 'R' in f and 'ML' in f]
 
-image_files_cc = [f for f in image_files_cc[19:] if f.endswith('.png') and 'R' in f and 'CC' in f]
-image_files_mlo = [f for f in image_files_mlo[19:] if f.endswith('.png') and 'R' in f and 'ML' in f]
+image_files_cc = [f for f in image_files_cc[21:] if f.endswith('.png') and 'R' in f and 'CC' in f]
+image_files_mlo = [f for f in image_files_mlo[21:] if f.endswith('.png') and 'R' in f and 'ML' in f]
 
 def axis_off(): # Function to configure axis plots
         plt.tick_params(axis='both', which='both', bottom=False, top=False, left=False, right=False, labelbottom=False, labelleft=False)
@@ -466,7 +466,7 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
         plt.imshow(colored_clustered_image_mlo_balanced)
         plt.title('MLO Processed clustered image')
         axis_off()
-        
+
     else:
         print("Ratios could not be calculated. The closest line to the thickest point is missing.")
 

@@ -282,7 +282,7 @@ def calculate_length(line):
     """Function to calculate the length of a given line"""
     return np.sqrt((line[1][1] - line[0][1])**2 + (line[1][0] - line[0][0])**2)
 
-def calculate_ratios(parallel_lines, reference_line):
+def calculate_length_ratios(parallel_lines, reference_line):
     """Function to calculate the ratios between a set of parallel lines and a reference line"""
     reference_length = calculate_length(reference_line) # Length of the reference line
     ratios = [] # Initialization
@@ -297,13 +297,14 @@ def calculate_ratios(parallel_lines, reference_line):
     return ratios
 
 if closest_line is not None:
-    ratios = calculate_ratios(parallel_lines, closest_line)
+    ratios = calculate_length_ratios(parallel_lines, closest_line)
 else:
+    print("Ratios could not be calculated. The closest line to the thickest point is missing.")
     ratios = []
 
-def propagate_ratios(image, skinline, ratios):
-    """Function that propagates a set of intensity ratios across a given image, based on the distance from
-    every pixel its closest skinline point"""
+def apply_length_ratios(image, skinline, ratios):
+    """Function that applies a set of length ratios across a given image, based on the distance from
+    every pixel to its closest skinline point"""
     skinline_mask = np.zeros_like(image, dtype=np.uint8)
     for x, y in skinline:
         skinline_mask[int(x), int(y)] = 1 # Binary mask of the skinline
@@ -317,7 +318,7 @@ def propagate_ratios(image, skinline, ratios):
             distance = distance_map[x, y]
             if distance > 0 and max_distance != 0:
                 ratio_index = int((distance / max_distance) * (len(ratios) - 1))
-                ratios_propagated[x, y] *= ratios[ratio_index] # Ratios propagation 
+                ratios_propagated[x, y] *= ratios[ratio_index] # Ratios application 
 
     return ratios_propagated
 
@@ -333,8 +334,8 @@ plt.title('MLO Original image')
 axis_off()
 
 if ratios:
-    ratios_propagated_cc = propagate_ratios(cc_corrected, cc_pb, ratios)
-    ratios_propagated_mlo = propagate_ratios(mlo_corrected, mlo_pb, ratios)
+    ratios_propagated_cc = apply_length_ratios(cc_corrected, cc_pb, ratios)
+    ratios_propagated_mlo = apply_length_ratios(mlo_corrected, mlo_pb, ratios)
 
     plt.subplot(2, 2, 2)
     plt.imshow(ratios_propagated_cc, cmap='gray')
@@ -347,7 +348,7 @@ if ratios:
     axis_off()
 
 else:
-    print("Ratios could not be calculated. The closest line to the thickest point is missing.")
+    print("Ratios could not be propagated. The closest line to the thickest point is missing.")
     
 plt.tight_layout()
 plt.savefig(os.path.join(output_dir, f'ratios_propagated_{id_image}.png'))
@@ -411,7 +412,7 @@ if ratios:
     axis_off()
 
 else:
-    print("Ratios could not be calculated. The closest line to the thickest point is missing.")
+    print("Balanced images could not be calculated. The closest line to the thickest point is missing.")
 
 plt.tight_layout()
 plt.savefig(os.path.join(output_dir, f'balanced_images_{id_image}.png'))
@@ -423,7 +424,7 @@ def kmeans_segmentation(image, n_clusters, ref_image=None):
     """Function that applies K-Means clustering to an image. Optionally, a reference image can be specified
        to ensure consistent colors across clustered images of the same patient. By default, ref_image is
        set to None"""
-    flat_image = image.reshape((-1, 1))  
+    flat_image = image.reshape((-1, 1)) # Flattened image
     
     if ref_image is not None:                         
         flat_ref_image = ref_image.reshape((-1, 1))
@@ -433,7 +434,7 @@ def kmeans_segmentation(image, n_clusters, ref_image=None):
     
     kmn = KMeans(n_clusters=n_clusters, init=initial_centers, n_init=1, random_state=0).fit(flat_image) # K-Means using the initial centroids
     labels_image = kmn.predict(flat_image)
-    clustered_image = np.reshape(labels_image, [image.shape[0], image.shape[1]]) + 1 # We add +1 so labels start at 1, instead of starting at 0
+    clustered_image = np.reshape(labels_image, [image.shape[0], image.shape[1]]) + 1 # Adding +1 so labels start at 1, instead of starting at 0
     colored_clustered_image = color.label2rgb(clustered_image, colors=['black', 'red', 'darkblue', 'yellow', 'gray'], bg_label=0)
     return colored_clustered_image
 
@@ -466,7 +467,7 @@ if ratios:
     axis_off()
 
 else:
-    print("Ratios could not be calculated. The closest line to the thickest point is missing.")
+    print("Clustered images could not be calculated. The closest line to the thickest point is missing.")
 
 plt.tight_layout()
 plt.savefig(os.path.join(output_dir, f'clustering_images_{id_image}.png'))
