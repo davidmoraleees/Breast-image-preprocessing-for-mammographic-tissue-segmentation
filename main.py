@@ -83,7 +83,7 @@ plt.title('MLO Peripheral area')
 axis_off()
 
 plt.tight_layout()
-plt.savefig(os.path.join(output_dir, f'separate_periphery_{id_image}.png'))
+plt.savefig(os.path.join(output_dir, f'separate_periphery_{id_image}.png'), bbox_inches='tight')
 plt.show()
 
 
@@ -136,7 +136,7 @@ plt.title('MLO Difference')
 axis_off()
 
 plt.tight_layout()
-plt.savefig(os.path.join(output_dir, f'intensity_ratio_propagation_{id_image}.png'))
+plt.savefig(os.path.join(output_dir, f'intensity_ratio_propagation_{id_image}.png'), bbox_inches='tight')
 plt.show()
 
 
@@ -158,7 +158,7 @@ farthest_point_mlo, farthest_point_index_mlo = find_farthest_point_from_chest_wa
 mlo_pb_upper = mlo_pb[:farthest_point_index_mlo + 1] # We divide the skinline into an upper skinline and a lower skinline based on the farthest point
 mlo_pb_lower = mlo_pb[farthest_point_index_mlo:]
 
-plt.figure(figsize=(6,6))
+plt.figure(figsize=(3,3))
 plt.imshow(mlo_bpa, cmap='gray')
 plt.plot(mlo_pb_upper[:, 1], mlo_pb_upper[:, 0], '-b', linewidth=2) # Plot of the x-y coordinates of the upper skinline
 plt.plot(mlo_pb_lower[:, 1], mlo_pb_lower[:, 0], '-g', linewidth=2) # Plot of the x-y coordinates of the lower skinline
@@ -166,7 +166,7 @@ plt.plot(farthest_point_mlo[1], farthest_point_mlo[0], 'yo') # Plot of the x-y c
 plt.title('MLO Peripheral area')
 axis_off()
 plt.tight_layout()
-plt.savefig(os.path.join(output_dir, f'MLO_peripheral_area_{id_image}.png'))
+plt.savefig(os.path.join(output_dir, f'MLO_peripheral_area_{id_image}.png'), bbox_inches='tight')
 plt.show()
 
 # Now we have to generate a set of parallel lines. For this reason, various functions are defined:
@@ -224,7 +224,7 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
     min_distance = float(10**8) # Initialization of the variable.
     closest_line = None # Variable to store the closest parallel line to the thickest point.
 
-    plt.figure(figsize=(6, 6))
+    plt.figure(figsize=(6, 3))
     plt.subplot(1, 2, 1)
     plt.imshow(image, cmap='gray')
     
@@ -253,7 +253,7 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
     plt.plot(top_reference[1], top_reference[0])
     plt.plot(right_reference[1], right_reference[0])
     
-    plt.title('MLO Image with parallel lines')
+    plt.title('Parallel lines')
     axis_off()
 
     if closest_line is not None:
@@ -268,7 +268,7 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
         print("No line found close to the thickest point.")
 
     plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, f'parallel_lines_thickest_point_{id_image}.png'))
+    plt.savefig(os.path.join(output_dir, f'parallel_lines_thickest_point_{id_image}.png'), bbox_inches='tight')
     plt.show()
 
     return parallel_lines, closest_line
@@ -322,7 +322,7 @@ def apply_length_ratios(image, skinline, ratios):
 
     return ratios_propagated
 
-plt.figure(figsize=(6, 6))
+plt.figure(figsize=(6, 3))
 
 if ratios:
     ratios_propagated_cc = apply_length_ratios(cc_corrected, cc_pb, ratios)
@@ -341,7 +341,7 @@ else:
     print("Ratios could not be propagated. The closest line to the thickest point is missing.")
     
 plt.tight_layout()
-plt.savefig(os.path.join(output_dir, f'ratios_propagated_{id_image}.png'))
+plt.savefig(os.path.join(output_dir, f'ratios_propagated_{id_image}.png'), bbox_inches='tight')
 plt.show()
 
 
@@ -376,7 +376,7 @@ def intensity_balancing(image, skinline, ratios):
 
     return balanced_image
 
-plt.figure(figsize=(6, 6))
+plt.figure(figsize=(6, 3))
 
 if ratios:
     balanced_cc_image = intensity_balancing(ratios_propagated_cc, cc_pb, ratios)
@@ -395,7 +395,7 @@ else:
     print("Balanced images could not be calculated. The closest line to the thickest point is missing.")
 
 plt.tight_layout()
-plt.savefig(os.path.join(output_dir, f'balanced_images_{id_image}.png'))
+plt.savefig(os.path.join(output_dir, f'balanced_images_{id_image}.png'), bbox_inches='tight')
 plt.show()
 
 
@@ -450,5 +450,5 @@ else:
     print("Clustered images could not be calculated. The closest line to the thickest point is missing.")
 
 plt.tight_layout()
-plt.savefig(os.path.join(output_dir, f'clustering_images_{id_image}.png'))
+plt.savefig(os.path.join(output_dir, f'clustering_images_{id_image}.png'), bbox_inches='tight')
 plt.show()
