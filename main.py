@@ -29,7 +29,7 @@ if not os.path.exists(output_dir): # We make sure that the output images folder 
 filename_cc = '20587902_8dbbd4e51f549ff0_MG_R_CC_ANON.png' # CC image of a right breast
 filename_mlo = '20587928_8dbbd4e51f549ff0_MG_R_ML_ANON.png' # MLO image of a right breast
 
-id_image = filename_cc[:-17] # ID to identify every patient
+id_image = filename_cc[:-17] # ID to identify the patient
 
 cc_image_path = os.path.join('INbreast/AllDICOMs_PNG', filename_cc)
 mlo_image_path = os.path.join('INbreast/AllDICOMs_PNG', filename_mlo)
@@ -378,10 +378,12 @@ else:
 def intensity_balancing(image, skinline, ratios):
     """Function to balance the intensity of an image based on the distance from every pixel to its closest
     skinline point, using a set of input ratios. The goal is to achieve uniformity"""
-    R_values = np.array(ratios)
+    R_values = np.log(np.array(ratios)+1) # Adding +1 to avoid log(0)
     Rmin = R_values.min()
     Rmax = R_values.max()
-    Rref = R_values.mean()
+
+    R_values_normalized =  (R_values - Rmin) / (Rmax - Rmin)
+    Rref = R_values_normalized.mean()
 
     if Rmax == Rmin: # Avoid division by zero
         Rmin += 1e-5
