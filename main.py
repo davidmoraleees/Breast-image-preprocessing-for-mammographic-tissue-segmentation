@@ -206,8 +206,8 @@ mlo_pb_lower = mlo_pb[farthest_point_index_mlo:]
 
 plt.figure(figsize=(3,3))
 plt.imshow(mlo_bpa, cmap='gray')
-plt.plot(mlo_pb_upper[:, 1], mlo_pb_upper[:, 0], '-b', linewidth=2) # Plot of the x-y coordinates of the upper skinline
-plt.plot(mlo_pb_lower[:, 1], mlo_pb_lower[:, 0], '-g', linewidth=2) # Plot of the x-y coordinates of the lower skinline
+plt.plot(mlo_pb_upper[:, 1], mlo_pb_upper[:, 0], '-b', linewidth=3) # Plot of the x-y coordinates of the upper skinline
+plt.plot(mlo_pb_lower[:, 1], mlo_pb_lower[:, 0], '-g', linewidth=3) # Plot of the x-y coordinates of the lower skinline
 plt.plot(farthest_point_mlo[1], farthest_point_mlo[0], 'yo') # Plot of the x-y coordinates of the farthest point
 plt.title('MLO Peripheral area')
 axis_off()
@@ -305,8 +305,8 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
         parallel_top, parallel_bottom = closest_line
         plt.subplot(1, 2, 2)
         plt.imshow(mlo_bpa, cmap='gray')
-        plt.plot([parallel_top[1], parallel_bottom[1]], [parallel_top[0], parallel_bottom[0]], '-y', linewidth=2) # Plot of the closest parallel line
-        plt.plot(thickest_point_mlo[1], thickest_point_mlo[0], 'yo') # Plot of the thickest point
+        plt.plot([parallel_top[1], parallel_bottom[1]], [parallel_top[0], parallel_bottom[0]], '-m', linewidth=2) # Plot of the closest parallel line
+        plt.plot(thickest_point_mlo[1], thickest_point_mlo[0], 'mo') # Plot of the thickest point
         plt.title('Closest parallel line to thickest point')
         axis_off()
     else:
@@ -449,7 +449,7 @@ def kmeans_segmentation(image, n_clusters, ref_image=None):
     kmn = KMeans(n_clusters=n_clusters, init=initial_centers, n_init=1, random_state=0).fit(flat_image) # K-Means using the initial centroids
     labels_image = kmn.predict(flat_image)
     clustered_image = np.reshape(labels_image, [image.shape[0], image.shape[1]]) + 1 # Adding +1 so labels start at 1, instead of starting at 0
-    colored_clustered_image = color.label2rgb(clustered_image, colors=['black', 'red', 'darkblue', 'yellow', 'gray'], bg_label=0)
+    colored_clustered_image = color.label2rgb(clustered_image, colors=['black', 'red', 'blue', 'yellow', 'gray'], bg_label=0)
     return colored_clustered_image
 
 colored_clustered_image_cc = kmeans_segmentation(cc_image, 5)
