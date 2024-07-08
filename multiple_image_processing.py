@@ -27,9 +27,6 @@ if not os.path.exists(output_dir):
 image_files_cc = [f for f in os.listdir(input_dir) if f.endswith('.png') and 'R' in f and 'CC' in f]
 image_files_mlo = [f for f in os.listdir(input_dir) if f.endswith('.png') and 'R' in f and 'ML' in f]
 
-image_files_cc = [f for f in image_files_cc[21:] if f.endswith('.png') and 'R' in f and 'CC' in f]
-image_files_mlo = [f for f in image_files_mlo[21:] if f.endswith('.png') and 'R' in f and 'ML' in f]
-
 def axis_off(): # Function to configure axis plots
         plt.tick_params(axis='both', which='both', bottom=False, top=False, left=False, right=False, labelbottom=False, labelleft=False)
 
@@ -42,7 +39,7 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
     cc_image = plt.imread(cc_image_path)
     mlo_image = plt.imread(mlo_image_path)
 
-    # 1. Breast periphery separation ------------------------------------------------------------------------------
+    # 1. Breast periphery separation --------------------------------------------------------------------------------------------------------------------
     def separate_periphery(image):
         """Function to separate the breast peripheral area (BPA)"""
         otsu_thresh = filters.threshold_otsu(image) # Optimal intensity threshold using Otsu's method
@@ -54,7 +51,14 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
         bpa_dilated = morphology.binary_dilation(bpa_filled, morphology.square(3)) # Dilate the binary image to include boundary pixels 
         labeled_bpa = measure.label(bpa_dilated) # Label connected regions in the binary image
         regions = measure.regionprops(labeled_bpa) # Properties of the labeled regions in the image
-        largest_region = max(regions, key=lambda r: r.area) # Largest region, which should correspond to the breast
+
+        max_area = 0
+        largest_region = None
+        for region in regions:
+            if region.area > max_area:
+                max_area = region.area
+                largest_region = region # Largest region, which should correspond to the breast
+
         bpa_final = np.zeros_like(bpa_combined)
         bpa_final[labeled_bpa == largest_region.label] = 1  # Assigns a true value to the pixels that belong to the largest region in the labeled image
         pb = measure.find_contours(bpa_final, 0.5)[0] # Contour of the breast periphery 
@@ -87,11 +91,13 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
     axis_off()
 
     plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, f'separate_periphery_{id_image}.png'))
-    plt.close()
+    plt.savefig(os.path.join(output_dir, f'separate_periphery_{id_image}.png'), bbox_inches='tight')
+    plt.show()
 
 
-    # 2. Intensity ratio propagation ---------------------------------------------------------------------------------
+    # 2. Intensity ratio propagation -----------------------------------------------------------------------------------------------------------------------
+    # A slightly different approach from the paper has been made, as the one in the paper has shown to produce minimal changes
+    # in intensity ratio propagation
     def intensity_ratio_propagation(image, periphery, neighborhood_size): 
         """Function to propagate intensity ratio for correcting intensity variations"""
         corrected_image = image.copy()
@@ -108,7 +114,7 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
                     neighborhood = image[xmin:xmax, ymin:ymax] # Local neighborhood extraction around the current pixel
                     
                     if image[x, y] == 0:
-                        image[x, y] += 1e-5 #Avoid division by zero.
+                        image[x, y] += 1e-5 # Avoid division by zero.
 
                     local_ratio = np.mean(neighborhood) / (image[x, y]) 
                     corrected_image[x, y] *= local_ratio # Adjust the intensity of the current pixel by the local ratio
@@ -120,29 +126,66 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
     
     plt.figure(figsize=(6, 6))
     plt.subplot(2, 2, 1)
-    plt.imshow(cc_image, cmap='gray')
-    plt.title('CC Original image')
-    axis_off()
-
-    plt.subplot(2, 2, 2)
     plt.imshow(cc_corrected, cmap='gray')
     plt.title('CC Corrected image')
     axis_off()
 
-    plt.subplot(2, 2, 3)
-    plt.imshow(mlo_image, cmap='gray')
-    plt.title('MLO Original image')
+    plt.subplot(2, 2, 2)
+    plt.imshow(np.abs(cc_image-cc_corrected), cmap='gray') # Showing the difference between the two images
+    plt.title('CC Difference')
     axis_off()
 
-    plt.subplot(2, 2, 4)
+    plt.subplot(2, 2, 3)
     plt.imshow(mlo_corrected, cmap='gray')
     plt.title('MLO Corrected image')
     axis_off()
 
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, f'intensity_ratio_propagation_{id_image}.png'))
-    plt.close()
+    plt.subplot(2, 2, 4)
+    plt.imshow(np.abs(mlo_image-mlo_corrected), cmap='gray')
+    plt.title('MLO Difference')
+    axis_off()
 
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, f'intensity_ratio_propagation_{id_image}.png'), bbox_inches='tight')
+    plt.show()
+
+    # The following function captures the approach of the paper. However, it produces minimal changes:
+    """
+    def intensity_ratio_propagation_paper(image, periphery, neighborhood_size): 
+        distance_map = distance_transform_edt(periphery)
+        
+        corrected_image = image.copy()
+        rows, cols = image.shape
+        half_size = neighborhood_size // 2
+
+        for y in tqdm(range(rows)):
+            for x in range(cols):
+                if periphery[y, x]: 
+                    ymin = max(0, y-half_size)
+                    ymax = min(rows, y+half_size+1)
+                    xmin = max(0, x-half_size)
+                    xmax = min(cols, x+half_size+1)
+                
+                    P2_mask = (distance_map[ymin:ymax, xmin:xmax] == distance_map[y, x] + 2)
+                    P1_mask = (distance_map[ymin:ymax, xmin:xmax] == distance_map[y, x] + 1)
+
+                    if np.any(P2_mask):
+                        I_avg_P2 = np.mean(image[ymin:ymax, xmin:xmax][P2_mask])
+                    else:
+                        I_avg_P2 = image[y, x]
+                    
+                    if np.any(P1_mask):
+                        I_avg_P1 = np.mean(image[ymin:ymax, xmin:xmax][P1_mask])
+                    else:
+                        I_avg_P1 = image[y, x]
+
+                    if I_avg_P1 == 0:
+                        I_avg_P1 += I_avg_P1
+                    pr = I_avg_P2 / (I_avg_P1 + 1e-8)
+                    
+                    corrected_image[y, x] = pr * image[y, x]
+        return corrected_image
+    """
 
     # 3. Breast thickness estimation ---------------------------------------------------------------------------------
     def find_farthest_point_from_chest_wall(skinline, image_width): 
@@ -162,16 +205,16 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
     mlo_pb_upper = mlo_pb[:farthest_point_index_mlo + 1] # We divide the skinline into an upper skinline and a lower skinline based on the farthest point
     mlo_pb_lower = mlo_pb[farthest_point_index_mlo:]
 
-    plt.figure(figsize=(6,6))
+    plt.figure(figsize=(3,3))
     plt.imshow(mlo_bpa, cmap='gray')
-    plt.plot(mlo_pb_upper[:, 1], mlo_pb_upper[:, 0], '-b', linewidth=2) # Plot of the x-y coordinates of the upper skinline
-    plt.plot(mlo_pb_lower[:, 1], mlo_pb_lower[:, 0], '-g', linewidth=2) # Plot of the x-y coordinates of the lower skinline
+    plt.plot(mlo_pb_upper[:, 1], mlo_pb_upper[:, 0], '-b', linewidth=3) # Plot of the x-y coordinates of the upper skinline
+    plt.plot(mlo_pb_lower[:, 1], mlo_pb_lower[:, 0], '-g', linewidth=3) # Plot of the x-y coordinates of the lower skinline
     plt.plot(farthest_point_mlo[1], farthest_point_mlo[0], 'yo') # Plot of the x-y coordinates of the farthest point
     plt.title('MLO Peripheral area')
     axis_off()
     plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, f'MLO_peripheral_area_{id_image}.png'))
-    plt.close()
+    plt.savefig(os.path.join(output_dir, f'MLO_peripheral_area_{id_image}.png'), bbox_inches='tight')
+    plt.show()
 
     # Now we have to generate a set of parallel lines. For this reason, various functions are defined:
     def find_nearest_top(skinline):
@@ -194,15 +237,15 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
     def find_intersection(skinline, slope, intercept):
         """Function to find the closest point of intersection of a line with the skinline"""
         if np.isclose(slope, 0.0, atol=1e-8):  # Avoid division by very small slopes. atol is the absolute tolerance
-            for y, x in skinline:
-                if np.isclose(intercept, y, atol=1.0):  # Check if intercept is close to y
-                    return [y, x]
+            for x, y in skinline:
+                if np.isclose(intercept, x, atol=1.0): 
+                    return [x, y]
             print('Error. Intersection could not be calculated because of a division by zero')
             return None
         else:
-            for y, x in skinline:
-                if np.isclose(y, slope * x + intercept, atol=1.0):  # Check if (y, x) is close to the line
-                    return [y, x]
+            for x, y in skinline:
+                if np.isclose(x, slope * y + intercept, atol=1.0):  # Check if (x, y) is close to the line
+                    return [x, y]
             return None
 
     thickest_point_cc=np.copy(farthest_point_cc) # The thickest point is needed to generate the parallel lines
@@ -216,32 +259,31 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
         one and find the closest parallel line that intercepts the thickest point"""
         top_reference = find_nearest_top(skinline) # Nearest point to the top boundary of the image
         right_reference = find_nearest_right(skinline) # Nearest point to the right boundary of the image
-        
         slope = calculate_slope(top_reference, right_reference) # Slope of the line connecting top_reference and right_reference
-
+        
         if slope is None:
-            intercept = None
+                intercept = None
         else:
-            intercept = top_reference[0] - slope * top_reference[1] # Intercept of the line
+            intercept = top_reference[0] - slope * top_reference[1] 
 
         parallel_lines = [] # Initialization of the variable.
         min_distance = float(10**8) # Initialization of the variable.
         closest_line = None # Variable to store the closest parallel line to the thickest point.
 
-        plt.figure(figsize=(6, 6))
+        plt.figure(figsize=(6, 3))
         plt.subplot(1, 2, 1)
         plt.imshow(image, cmap='gray')
         
         for i in tqdm(range(num_lines)):
             if intercept is None:
-                parallel_intercept = None
-                parallel_top = None
-                parallel_bottom = None
+                    parallel_intercept = None
+                    parallel_top = None
+                    parallel_bottom = None
             else:
                 parallel_intercept = intercept - (i + 1) * offset_distance / np.cos(np.arctan(slope))
                 parallel_top = find_intersection(skinline, slope, parallel_intercept) # Intersection points of the parallel line with the skinline
                 parallel_bottom = find_intersection(skinline[::-1], slope, parallel_intercept)
-            
+                
             if parallel_top is not None and parallel_bottom is not None:
                 plt.plot([parallel_top[1], parallel_bottom[1]], [parallel_top[0], parallel_bottom[0]], '-r', linewidth=2)
                 parallel_lines.append((parallel_top, parallel_bottom))
@@ -257,43 +299,43 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
         plt.plot(top_reference[1], top_reference[0])
         plt.plot(right_reference[1], right_reference[0])
         
-        plt.title('MLO Image with parallel lines')
+        plt.title('Parallel lines')
         axis_off()
 
         if closest_line is not None:
             parallel_top, parallel_bottom = closest_line
             plt.subplot(1, 2, 2)
             plt.imshow(mlo_bpa, cmap='gray')
-            plt.plot([parallel_top[1], parallel_bottom[1]], [parallel_top[0], parallel_bottom[0]], '-y', linewidth=2) # Plot of the closest parallel line
-            plt.plot(thickest_point_mlo[1], thickest_point_mlo[0], 'yo') # Plot of the thickest point
+            plt.plot([parallel_top[1], parallel_bottom[1]], [parallel_top[0], parallel_bottom[0]], '-m', linewidth=2) # Plot of the closest parallel line
+            plt.plot(thickest_point_mlo[1], thickest_point_mlo[0], 'mo') # Plot of the thickest point
             plt.title('Closest parallel line to thickest point')
             axis_off()
         else:
             print("No line found close to the thickest point.")
 
         plt.tight_layout()
-        plt.savefig(os.path.join(output_dir, f'parallel_lines_thickest_point_{id_image}.png'))
-        plt.close()
+        plt.savefig(os.path.join(output_dir, f'parallel_lines_thickest_point_{id_image}.png'), bbox_inches='tight')
+        plt.show()
 
         return parallel_lines, closest_line
 
-    offset_distance = -1 #Negative value means going left in the image.
-    num_lines = len(mlo_pb_upper) #We want every point in the upper skinline to match one point of the lower skinline.
+    offset_distance = -1 # A negative value means going to negative x-coordinates in the image.
+    num_lines = len(mlo_pb_upper) # We want every point in the upper skinline to match one point of the lower skinline.
     parallel_lines, closest_line = draw_reference_and_parallel_lines(mlo_bpa, mlo_pb, offset_distance, num_lines, thickest_point_mlo, output_dir, id_image)
 
-    #Now we have to calculate the intensity ratios and propagate them. Various functions are defined:
+    # Now we have to calculate the intensity ratios and propagate them. Various functions are defined:
     def calculate_length(line):
         """Function to calculate the length of a given line"""
         return np.sqrt((line[1][1] - line[0][1])**2 + (line[1][0] - line[0][0])**2)
 
-    def calculate_ratios(parallel_lines, reference_line):
+    def calculate_length_ratios(parallel_lines, reference_line):
         """Function to calculate the ratios between a set of parallel lines and a reference line"""
         reference_length = calculate_length(reference_line) # Length of the reference line
         ratios = [] # Initialization
         for line in parallel_lines:
             line_length = calculate_length(line) # Length of every parallel line
 
-            if reference_length == 0: #Avoid division by zero
+            if reference_length == 0: # Avoid division by zero
                 reference_length += 1e-5
             
             ratio = line_length / reference_length
@@ -301,13 +343,14 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
         return ratios
 
     if closest_line is not None:
-        ratios = calculate_ratios(parallel_lines, closest_line)
+        ratios = calculate_length_ratios(parallel_lines, closest_line)
     else:
+        print("Ratios could not be calculated. The closest line to the thickest point is missing.")
         ratios = []
 
-    def propagate_ratios(image, skinline, ratios):
-        """Function that propagates a set of intensity ratios across a given image, based on the distance from
-        every pixel its closest skinline point"""
+    def apply_length_ratios(image, skinline, ratios):
+        """Function that applies a set of length ratios across a given image, based on the distance from
+        every pixel to its closest skinline point"""
         skinline_mask = np.zeros_like(image, dtype=np.uint8)
         for x, y in skinline:
             skinline_mask[int(x), int(y)] = 1 # Binary mask of the skinline
@@ -321,50 +364,27 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
                 distance = distance_map[x, y]
                 if distance > 0 and max_distance != 0:
                     ratio_index = int((distance / max_distance) * (len(ratios) - 1))
-                    ratios_propagated[x, y] *= ratios[ratio_index] # Ratios propagation 
+                    ratios_propagated[x, y] *= ratios[ratio_index] # Ratios application 
 
         return ratios_propagated
-    
-    plt.figure(figsize=(6, 6))
-    plt.subplot(2, 2, 1)
-    plt.imshow(cc_image, cmap='gray')
-    plt.title('CC Original image')
-    axis_off()
-
-    plt.subplot(2, 2, 3)
-    plt.imshow(mlo_image, cmap='gray')
-    plt.title('MLO Original image')
-    axis_off()
 
     if ratios:
-        ratios_propagated_cc = propagate_ratios(cc_corrected, cc_pb, ratios)
-        ratios_propagated_mlo = propagate_ratios(mlo_corrected, mlo_pb, ratios)
-
-        plt.subplot(2, 2, 2)
-        plt.imshow(ratios_propagated_cc, cmap='gray')
-        plt.title('CC Ratios propagated image')
-        axis_off()
-
-        plt.subplot(2, 2, 4)
-        plt.imshow(ratios_propagated_mlo, cmap='gray')
-        plt.title('MLO Ratios propagated image')
-        axis_off()
-
+        ratios_propagated_cc = apply_length_ratios(cc_corrected, cc_pb, ratios)
+        ratios_propagated_mlo = apply_length_ratios(mlo_corrected, mlo_pb, ratios)
     else:
-        print("Ratios could not be calculated. The closest line to the thickest point is missing.")
-
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, f'ratios_propagated_{id_image}.png'))
-    plt.close()
+        print("Ratios could not be propagated. The closest line to the thickest point is missing.")
+    
 
     # 4. Intensity balancing -------------------------------------------------------------------------------------------------------------
     def intensity_balancing(image, skinline, ratios):
         """Function to balance the intensity of an image based on the distance from every pixel to its closest
         skinline point, using a set of input ratios. The goal is to achieve uniformity"""
-        R_values = np.array(ratios)
+        R_values = np.log(np.array(ratios)+1) # Adding +1 to avoid log(0)
         Rmin = R_values.min()
         Rmax = R_values.max()
-        Rref = R_values.mean()
+
+        R_values_normalized =  (R_values - Rmin) / (Rmax - Rmin)
+        Rref = R_values_normalized.mean()
 
         if Rmax == Rmin: # Avoid division by zero
             Rmin += 1e-5
@@ -387,45 +407,39 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
                     balanced_image[x, y] *= (1 + (RP_ref - RP_xy)) # Adjust pixel intensity based on distance to skinline
 
         return balanced_image
-    
-    plt.figure(figsize=(6, 6))
-    plt.subplot(2, 2, 1)
-    plt.imshow(cc_image, cmap='gray')
-    plt.title('CC Original image')
-    axis_off()
 
-    plt.subplot(2, 2, 3)
-    plt.imshow(mlo_image, cmap='gray')
-    plt.title('MLO Original image')
-    axis_off()
+    plt.figure(figsize=(6, 3))
 
     if ratios:
         balanced_cc_image = intensity_balancing(ratios_propagated_cc, cc_pb, ratios)
         balanced_mlo_image = intensity_balancing(ratios_propagated_mlo, mlo_pb, ratios)
 
-        plt.subplot(2, 2, 2)
+        plt.subplot(1, 2, 1)
         plt.imshow(balanced_cc_image, cmap='gray')
         plt.title('CC Balanced image')
         axis_off()
 
-        plt.subplot(2, 2, 4)
+        plt.subplot(1, 2, 2)
         plt.imshow(balanced_mlo_image, cmap='gray')
         plt.title('MLO Balanced image')
         axis_off()
 
     else:
-        print("Ratios could not be calculated. The closest line to the thickest point is missing.")
+        print("Balanced images could not be calculated. The closest line to the thickest point is missing.")
 
     plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, f'balanced_images_{id_image}.png'))
-    plt.close()
+    plt.savefig(os.path.join(output_dir, f'balanced_images_{id_image}.png'), bbox_inches='tight')
+    plt.show()
+
 
     # 5. Breast segmentation  -----------------------------------------------------------------------------------------------------------
+    # In view of the difficulties to apply the methods followed in the paper, due to a lack of data, a different aproach has been done: a
+    # breast segmentation with K-Means clustering
     def kmeans_segmentation(image, n_clusters, ref_image=None):
         """Function that applies K-Means clustering to an image. Optionally, a reference image can be specified
         to ensure consistent colors across clustered images of the same patient. By default, ref_image is
         set to None"""
-        flat_image = image.reshape((-1, 1))  
+        flat_image = image.reshape((-1, 1)) # Flattened image
         
         if ref_image is not None:                         
             flat_ref_image = ref_image.reshape((-1, 1))
@@ -435,8 +449,8 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
         
         kmn = KMeans(n_clusters=n_clusters, init=initial_centers, n_init=1, random_state=0).fit(flat_image) # K-Means using the initial centroids
         labels_image = kmn.predict(flat_image)
-        clustered_image = np.reshape(labels_image, [image.shape[0], image.shape[1]]) + 1 # We add +1 so labels start at 1, instead of starting at 0
-        colored_clustered_image = color.label2rgb(clustered_image, colors=['black', 'red', 'darkblue', 'yellow', 'gray'], bg_label=0)
+        clustered_image = np.reshape(labels_image, [image.shape[0], image.shape[1]]) + 1 # Adding +1 so labels start at 1, instead of starting at 0
+        colored_clustered_image = color.label2rgb(clustered_image, colors=['black', 'red', 'blue', 'yellow', 'gray'], bg_label=0)
         return colored_clustered_image
 
     colored_clustered_image_cc = kmeans_segmentation(cc_image, 5)
@@ -445,12 +459,12 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
     plt.figure(figsize=(6,6))
     plt.subplot(2,2,1)
     plt.imshow(colored_clustered_image_cc)
-    plt.title('CC Unprocessed clustered image')
+    plt.title('CC Unprocessed clusters')
     axis_off()
 
     plt.subplot(2,2,3)
     plt.imshow(colored_clustered_image_mlo)
-    plt.title('MLO Unprocessed clustered image')
+    plt.title('MLO Unprocessed clusters')
     axis_off()
 
     if ratios:
@@ -459,18 +473,17 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
 
         plt.subplot(2,2,2)
         plt.imshow(colored_clustered_image_cc_balanced)
-        plt.title('CC Processed clustered image')
+        plt.title('CC Processed clusters')
         axis_off()
 
         plt.subplot(2,2,4)
         plt.imshow(colored_clustered_image_mlo_balanced)
-        plt.title('MLO Processed clustered image')
+        plt.title('MLO Processed clusters')
         axis_off()
 
     else:
-        print("Ratios could not be calculated. The closest line to the thickest point is missing.")
+        print("Clustered images could not be calculated. The closest line to the thickest point is missing.")
 
     plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, f'clustering_images_{id_image}.png'))
-    plt.close()
-
+    plt.savefig(os.path.join(output_dir, f'clustering_images_{id_image}.png'), bbox_inches='tight')
+    plt.show()
