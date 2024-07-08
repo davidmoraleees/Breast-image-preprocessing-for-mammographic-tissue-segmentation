@@ -95,7 +95,8 @@ plt.show()
 
 
 # 2. Intensity ratio propagation -----------------------------------------------------------------------------------------------------------------------
-# A slightly different function from the paper has been used, as the one in the paper produces minimal changes in intensity ratio propagation
+# A slightly different approach from the paper has been made, as the one in the paper has shown to produce minimal changes
+# in intensity ratio propagation
 def intensity_ratio_propagation(image, periphery, neighborhood_size): 
     """Function to propagate intensity ratio for correcting intensity variations"""
     corrected_image = image.copy()
@@ -112,7 +113,7 @@ def intensity_ratio_propagation(image, periphery, neighborhood_size):
                 neighborhood = image[xmin:xmax, ymin:ymax] # Local neighborhood extraction around the current pixel
                 
                 if image[x, y] == 0:
-                    image[x, y] += 1e-5 #Avoid division by zero.
+                    image[x, y] += 1e-5 # Avoid division by zero.
 
                 local_ratio = np.mean(neighborhood) / (image[x, y]) 
                 corrected_image[x, y] *= local_ratio # Adjust the intensity of the current pixel by the local ratio
@@ -147,6 +148,43 @@ plt.tight_layout()
 plt.savefig(os.path.join(output_dir, f'intensity_ratio_propagation_{id_image}.png'), bbox_inches='tight')
 plt.show()
 
+# The following function captures the approach of the paper. However, it produces minimal changes:
+"""
+def intensity_ratio_propagation_paper(image, periphery, neighborhood_size): 
+    distance_map = distance_transform_edt(periphery)
+    
+    corrected_image = image.copy()
+    rows, cols = image.shape
+    half_size = neighborhood_size // 2
+
+    for y in tqdm(range(rows)):
+        for x in range(cols):
+            if periphery[y, x]: 
+                ymin = max(0, y-half_size)
+                ymax = min(rows, y+half_size+1)
+                xmin = max(0, x-half_size)
+                xmax = min(cols, x+half_size+1)
+            
+                P2_mask = (distance_map[ymin:ymax, xmin:xmax] == distance_map[y, x] + 2)
+                P1_mask = (distance_map[ymin:ymax, xmin:xmax] == distance_map[y, x] + 1)
+
+                if np.any(P2_mask):
+                    I_avg_P2 = np.mean(image[ymin:ymax, xmin:xmax][P2_mask])
+                else:
+                    I_avg_P2 = image[y, x]
+                
+                if np.any(P1_mask):
+                    I_avg_P1 = np.mean(image[ymin:ymax, xmin:xmax][P1_mask])
+                else:
+                    I_avg_P1 = image[y, x]
+
+                if I_avg_P1 == 0:
+                    I_avg_P1 += I_avg_P1
+                pr = I_avg_P2 / (I_avg_P1 + 1e-8)
+                
+                corrected_image[y, x] = pr * image[y, x]
+    return corrected_image
+"""
 
 # 3. Breast thickness estimation ---------------------------------------------------------------------------------
 def find_farthest_point_from_chest_wall(skinline, image_width): 
@@ -280,11 +318,11 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
 
     return parallel_lines, closest_line
 
-offset_distance = -1 #Negative value means going left in the image.
-num_lines = len(mlo_pb_upper) #We want every point in the upper skinline to match one point of the lower skinline.
+offset_distance = -1 # A negative value means going to negative x-coordinates in the image.
+num_lines = len(mlo_pb_upper) # We want every point in the upper skinline to match one point of the lower skinline.
 parallel_lines, closest_line = draw_reference_and_parallel_lines(mlo_bpa, mlo_pb, offset_distance, num_lines, thickest_point_mlo, output_dir, id_image)
 
-#Now we have to calculate the intensity ratios and propagate them. Various functions are defined:
+# Now we have to calculate the intensity ratios and propagate them. Various functions are defined:
 def calculate_length(line):
     """Function to calculate the length of a given line"""
     return np.sqrt((line[1][1] - line[0][1])**2 + (line[1][0] - line[0][0])**2)
@@ -296,7 +334,7 @@ def calculate_length_ratios(parallel_lines, reference_line):
     for line in parallel_lines:
         line_length = calculate_length(line) # Length of every parallel line
 
-        if reference_length == 0: #Avoid division by zero
+        if reference_length == 0: # Avoid division by zero
             reference_length += 1e-5
         
         ratio = line_length / reference_length
@@ -392,6 +430,8 @@ plt.show()
 
 
 # 5. Breast segmentation  -----------------------------------------------------------------------------------------------------------
+# In view of the difficulties to apply the methods followed in the paper, due to a lack of data, a different aproach has been done: a
+# breast segmentation with K-Means clustering
 def kmeans_segmentation(image, n_clusters, ref_image=None):
     """Function that applies K-Means clustering to an image. Optionally, a reference image can be specified
        to ensure consistent colors across clustered images of the same patient. By default, ref_image is
