@@ -1,0 +1,18 @@
+Firstly, by calculating the shortest distance $D(x,y)$ from each pixel $P(x,y)$ in the breast peripheral area (BPA) to the skinline, a distance map is generated. Then, a propagation ratio $pr$ is calculated by dividing the mean intensity of pixels at a distance $D(x,y)+2$ by the mean intensity of pixels at a distance $D(x,y)+1$ from the pixel $P(x,y)$. Finally, by defining a 17-pixel neighborhood, the pixel's greylevel value is corrected, resulting in the corrected value $P'(x,y)$:\\
+
+
+\begin{equation}
+I_{\text{avg P}_{1}} = \frac{\sum_{i=1}^{N} P_{i}(x,y)}{N}, \quad \forall P_i(x,y) = D_i(x,y) + 1
+\end{equation}
+
+\begin{equation}
+I_{\text{avg P}_{2}} = \frac{\sum_{i=1}^{N} P_{i}(x,y)}{N}, \quad \forall P_i(x,y) = D_i(x,y) + 2
+\end{equation}
+
+\begin{equation}
+pr = \frac{I_{\text{avg P}_{2}}}{I_{\text{avg P}_{1}}}
+\end{equation}
+
+\begin{equation}
+P'(x,y) = pr \cdot P(x,y)
+\end{equation}

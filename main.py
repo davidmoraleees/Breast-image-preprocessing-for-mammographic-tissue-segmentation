@@ -16,7 +16,7 @@ INDEX
 5. Breast segmentation
 '''
 
-# 0. General configurations and image loading ---------------------------------------------------------------------
+# 0. General configurations and image loading -----------------------------------------------------------------------------------------------------
 os.environ['LOKY_MAX_CPU_COUNT'] = '2' # Maximum number of CPU cores. This is set to avoid issues with detecting physical cores
 
 def axis_off(): # Function to configure axis plots
@@ -38,7 +38,7 @@ cc_image = plt.imread(cc_image_path)
 mlo_image = plt.imread(mlo_image_path)
 
 
-# 1. Breast periphery separation ------------------------------------------------------------------------------
+# 1. Breast periphery separation --------------------------------------------------------------------------------------------------------------------
 def separate_periphery(image):
     """Function to separate the breast peripheral area (BPA)"""
     otsu_thresh = filters.threshold_otsu(image) # Optimal intensity threshold using Otsu's method
@@ -50,7 +50,14 @@ def separate_periphery(image):
     bpa_dilated = morphology.binary_dilation(bpa_filled, morphology.square(3)) # Dilate the binary image to include boundary pixels 
     labeled_bpa = measure.label(bpa_dilated) # Label connected regions in the binary image
     regions = measure.regionprops(labeled_bpa) # Properties of the labeled regions in the image
-    largest_region = max(regions, key=lambda r: r.area) # Largest region, which should correspond to the breast
+
+    max_area = 0
+    largest_region = None
+    for region in regions:
+        if region.area > max_area:
+            max_area = region.area
+            largest_region = region # Largest region, which should correspond to the breast
+
     bpa_final = np.zeros_like(bpa_combined)
     bpa_final[labeled_bpa == largest_region.label] = 1  # Assigns a true value to the pixels that belong to the largest region in the labeled image
     pb = measure.find_contours(bpa_final, 0.5)[0] # Contour of the breast periphery 
@@ -87,7 +94,8 @@ plt.savefig(os.path.join(output_dir, f'separate_periphery_{id_image}.png'), bbox
 plt.show()
 
 
-# 2. Intensity ratio propagation ---------------------------------------------------------------------------------
+# 2. Intensity ratio propagation -----------------------------------------------------------------------------------------------------------------------
+# A slightly different function from the paper has been used, as the one in the paper produces minimal changes in intensity ratio propagation
 def intensity_ratio_propagation(image, periphery, neighborhood_size): 
     """Function to propagate intensity ratio for correcting intensity variations"""
     corrected_image = image.copy()
@@ -121,7 +129,7 @@ plt.title('CC Corrected image')
 axis_off()
 
 plt.subplot(2, 2, 2)
-plt.imshow(np.abs(cc_image-cc_corrected), cmap='gray')
+plt.imshow(np.abs(cc_image-cc_corrected), cmap='gray') # Showing the difference between the two images
 plt.title('CC Difference')
 axis_off()
 
@@ -191,7 +199,7 @@ def find_intersection(skinline, slope, intercept):
     """Function to find the closest point of intersection of a line with the skinline"""
     if np.isclose(slope, 0.0, atol=1e-8):  # Avoid division by very small slopes. atol is the absolute tolerance
         for x, y in skinline:
-            if np.isclose(intercept, x, atol=1.0):  # Check if intercept is close to y
+            if np.isclose(intercept, x, atol=1.0): 
                 return [x, y]
         print('Error. Intersection could not be calculated because of a division by zero')
         return None
@@ -212,13 +220,12 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
        one and find the closest parallel line that intercepts the thickest point"""
     top_reference = find_nearest_top(skinline) # Nearest point to the top boundary of the image
     right_reference = find_nearest_right(skinline) # Nearest point to the right boundary of the image
-    
     slope = calculate_slope(top_reference, right_reference) # Slope of the line connecting top_reference and right_reference
     
     if slope is None:
             intercept = None
     else:
-        intercept = top_reference[0] - slope * top_reference[1] # Intercept of the line
+        intercept = top_reference[0] - slope * top_reference[1] 
 
     parallel_lines = [] # Initialization of the variable.
     min_distance = float(10**8) # Initialization of the variable.
@@ -322,28 +329,12 @@ def apply_length_ratios(image, skinline, ratios):
 
     return ratios_propagated
 
-plt.figure(figsize=(6, 3))
-
 if ratios:
     ratios_propagated_cc = apply_length_ratios(cc_corrected, cc_pb, ratios)
     ratios_propagated_mlo = apply_length_ratios(mlo_corrected, mlo_pb, ratios)
-
-    plt.subplot(1, 2, 1)
-    plt.imshow(ratios_propagated_cc, cmap='gray')
-    plt.title('CC Length ratios')
-    axis_off()
-
-    plt.subplot(1, 2, 2)
-    plt.imshow(ratios_propagated_mlo, cmap='gray')
-    plt.title('MLO Length ratios')
-    axis_off()
 else:
     print("Ratios could not be propagated. The closest line to the thickest point is missing.")
-    
-plt.tight_layout()
-plt.savefig(os.path.join(output_dir, f'ratios_propagated_{id_image}.png'), bbox_inches='tight')
-plt.show()
-
+ 
 
 # 4. Intensity balancing -------------------------------------------------------------------------------------------------------------
 def intensity_balancing(image, skinline, ratios):
@@ -391,6 +382,7 @@ if ratios:
     plt.imshow(balanced_mlo_image, cmap='gray')
     plt.title('MLO Balanced image')
     axis_off()
+
 else:
     print("Balanced images could not be calculated. The closest line to the thickest point is missing.")
 
