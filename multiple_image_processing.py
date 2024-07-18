@@ -96,8 +96,6 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
 
 
     # 2. Intensity ratio propagation -----------------------------------------------------------------------------------------------------------------------
-    # A slightly different approach from the paper has been made, as the one in the paper has shown to produce minimal changes
-    # in intensity ratio propagation
     def intensity_ratio_propagation(image, periphery, neighborhood_size): 
         """Function to propagate intensity ratio for correcting intensity variations"""
         corrected_image = image.copy()
@@ -149,43 +147,6 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
     plt.savefig(os.path.join(output_dir, f'intensity_ratio_propagation_{id_image}.png'), bbox_inches='tight')
     plt.show()
 
-    # The following function captures the approach of the paper. However, it produces minimal changes:
-    """
-    def intensity_ratio_propagation_paper(image, periphery, neighborhood_size): 
-        distance_map = distance_transform_edt(periphery)
-        
-        corrected_image = image.copy()
-        rows, cols = image.shape
-        half_size = neighborhood_size // 2
-
-        for y in tqdm(range(rows)):
-            for x in range(cols):
-                if periphery[y, x]: 
-                    ymin = max(0, y-half_size)
-                    ymax = min(rows, y+half_size+1)
-                    xmin = max(0, x-half_size)
-                    xmax = min(cols, x+half_size+1)
-                
-                    P2_mask = (distance_map[ymin:ymax, xmin:xmax] == distance_map[y, x] + 2)
-                    P1_mask = (distance_map[ymin:ymax, xmin:xmax] == distance_map[y, x] + 1)
-
-                    if np.any(P2_mask):
-                        I_avg_P2 = np.mean(image[ymin:ymax, xmin:xmax][P2_mask])
-                    else:
-                        I_avg_P2 = image[y, x]
-                    
-                    if np.any(P1_mask):
-                        I_avg_P1 = np.mean(image[ymin:ymax, xmin:xmax][P1_mask])
-                    else:
-                        I_avg_P1 = image[y, x]
-
-                    if I_avg_P1 == 0:
-                        I_avg_P1 += I_avg_P1
-                    pr = I_avg_P2 / (I_avg_P1 + 1e-8)
-                    
-                    corrected_image[y, x] = pr * image[y, x]
-        return corrected_image
-    """
 
     # 3. Breast thickness estimation ---------------------------------------------------------------------------------
     def find_farthest_point_from_chest_wall(skinline, image_width): 
@@ -433,8 +394,6 @@ for filename_cc, filename_mlo in zip(image_files_cc, image_files_mlo):
 
 
     # 5. Breast segmentation  -----------------------------------------------------------------------------------------------------------
-    # In view of the difficulties to apply the methods followed in the paper, due to a lack of data, a different aproach has been done: a
-    # breast segmentation with K-Means clustering
     def kmeans_segmentation(image, n_clusters, ref_image=None):
         """Function that applies K-Means clustering to an image. Optionally, a reference image can be specified
         to ensure consistent colors across clustered images of the same patient. By default, ref_image is
