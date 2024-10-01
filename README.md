@@ -1,4 +1,4 @@
-# Breast-cancer-diagnosis
+# Breast image pre-processing for mammographic tissue segmentation
 ## Authors
 This project was created by [David Morales](https://www.linkedin.com/in/david-morales-361b41282/) and [Anastasia Kuflievskaya](https://www.linkedin.com/in/anastasia-natalie-kuflievskaya-salas-72a309203/).
 
