@@ -1,6 +1,6 @@
 # Breast image pre-processing for mammographic tissue segmentation
 ## Authors
-This project was created by [David Morales](https://www.linkedin.com/in/david-morales-361b41282/) and [Anastasia Kuflievskaya](https://www.linkedin.com/in/anastasia-natalie-kuflievskaya-salas-72a309203/).
+This project was created by [David Morales](https://www.linkedin.com/in/david-morales-361b41282/) and [Anastasia Natalie Kuflievskaya](https://www.linkedin.com/in/anastasia-natalie-kuflievskaya-salas-72a309203/).
 
 ## Brief summary
 The focus of this project is to develop and implement a pre-processing technique for mammographic images, so as to enhance tissue segmentation of a mammogram. In view of the methods that have been followed in some relevant literature, we have applied a sequence of considered processing steps that includes periphery separation, intensity ratio propagation, breast thickness estimation, and intensity balancing. These techniques address common issues like uneven illumination and intensity variations that may hamper accurate image analysis. Our results indicate a better breast tissue segmentation and visualization, therefore enabling more accurate breast cancer diagnosis. 
@@ -17,6 +17,6 @@ Below there is an example image showing the results of our pre-processing method
 3. Run `main.py` to process a single mammogram image or use `multiple_image_processing.py` to process a whole folder of images.
 4. For a full explanation of the methods and steps we followed, refer to the `breast_image_preprocessing.pdf` file, which contains the detailed scientific paper on our approach.
 
-## Plagiarism
+## License
 
-Please do not copy or reuse significant portions of this code without explicit permission.
+This project is licensed under the MIT License. See the LICENSE file for details.
