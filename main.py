@@ -31,8 +31,8 @@ filename_mlo = '20587928_8dbbd4e51f549ff0_MG_R_ML_ANON.png' # MLO image of a rig
 
 id_image = filename_cc[:-17] # ID to identify the patient
 
-cc_image_path = os.path.join('INbreast/AllDICOMs_PNG', filename_cc)
-mlo_image_path = os.path.join('INbreast/AllDICOMs_PNG', filename_mlo)
+cc_image_path = os.path.join('PIVA_David_Morales_Anastasia_Kuflievskaya', filename_cc)
+mlo_image_path = os.path.join('PIVA_David_Morales_Anastasia_Kuflievskaya', filename_mlo)
 
 cc_image = plt.imread(cc_image_path)
 mlo_image = plt.imread(mlo_image_path)

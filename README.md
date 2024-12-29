@@ -11,6 +11,8 @@ Below there is an example image showing the results of our pre-processing method
 
 ![Result Image](clustering_images_20587902_8dbbd4e51f549ff0.png)
 
+The folder `Output_images_main` contains one example of every image that you should be obtaining when processing one pair of CC and MLO images.
+
 ## Usage
 1. Download the dataset from [Kaggle](https://www.kaggle.com/datasets/tommyngx/inbreast2012).
 2. Convert all images from DICOM format to PNG format using `DICOM_to_PNG_code.py`.
