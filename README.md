@@ -9,7 +9,7 @@ The focus of this project is to develop and implement a pre-processing technique
 
 Below there is an example image showing the results of our pre-processing method. The enhanced segmentation clearly identifies the breast tissue, allowing for more accurate subsequent analysis.
 
-![Result Image](clustering_images_20587902_8dbbd4e51f549ff0.png)
+![Result Image](clustering_images_20587902_8dbbd4e51f549ff0.pdf)
 
 The folder `Output_images_main` contains one example of every image that you should be obtaining when processing one pair of CC and MLO images.
 

@@ -90,7 +90,7 @@ plt.title('MLO Peripheral area')
 axis_off()
 
 plt.tight_layout()
-plt.savefig(os.path.join(output_dir, f'separate_periphery_{id_image}.png'), bbox_inches='tight')
+plt.savefig(os.path.join(output_dir, f'separate_periphery_{id_image}.pdf'), bbox_inches='tight')
 plt.show()
 
 
@@ -143,7 +143,7 @@ plt.title('MLO Difference')
 axis_off()
 
 plt.tight_layout()
-plt.savefig(os.path.join(output_dir, f'intensity_ratio_propagation_{id_image}.png'), bbox_inches='tight')
+plt.savefig(os.path.join(output_dir, f'intensity_ratio_propagation_{id_image}.pdf'), bbox_inches='tight')
 plt.show()
 
 
@@ -173,7 +173,7 @@ plt.plot(farthest_point_mlo[1], farthest_point_mlo[0], 'yo') # Plot of the x-y c
 plt.title('MLO Peripheral area')
 axis_off()
 plt.tight_layout()
-plt.savefig(os.path.join(output_dir, f'MLO_peripheral_area_{id_image}.png'), bbox_inches='tight')
+plt.savefig(os.path.join(output_dir, f'MLO_peripheral_area_{id_image}.pdf'), bbox_inches='tight')
 plt.show()
 
 # Now we have to generate a set of parallel lines. For this reason, various functions are defined:
@@ -274,7 +274,7 @@ def draw_reference_and_parallel_lines(image, skinline, offset_distance, num_line
         print("No line found close to the thickest point.")
 
     plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, f'parallel_lines_thickest_point_{id_image}.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir, f'parallel_lines_thickest_point_{id_image}.pdf'), bbox_inches='tight')
     plt.show()
 
     return parallel_lines, closest_line
@@ -388,7 +388,7 @@ else:
     print("Balanced images could not be calculated. The closest line to the thickest point is missing.")
 
 plt.tight_layout()
-plt.savefig(os.path.join(output_dir, f'balanced_images_{id_image}.png'), bbox_inches='tight')
+plt.savefig(os.path.join(output_dir, f'balanced_images_{id_image}.pdf'), bbox_inches='tight')
 plt.show()
 
 
@@ -443,5 +443,5 @@ else:
     print("Clustered images could not be calculated. The closest line to the thickest point is missing.")
 
 plt.tight_layout()
-plt.savefig(os.path.join(output_dir, f'clustering_images_{id_image}.png'), bbox_inches='tight')
+plt.savefig(os.path.join(output_dir, f'clustering_images_{id_image}.pdf'), bbox_inches='tight')
 plt.show()
