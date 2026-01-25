@@ -1,6 +1,14 @@
 # Breast image pre-processing for mammographic tissue segmentation
+
 ## Authors
 This project was created by [David Morales](https://www.linkedin.com/in/david-morales-361b41282/) and [Anastasia Kuflievskaya](https://www.linkedin.com/in/anastasia-natalie-kuflievskaya-salas-72a309203/).
+
+---
+
+## License
+
+This project is licensed under the Apache License 2.0.
+See the LICENSE file for details.
 
 ---
 
@@ -84,13 +92,6 @@ For each CC/MLO pair, the pipeline saves:
 ## Project report
 
 For a full explanation of the methods and steps we followed, refer to the `docs/report.pdf` file, which contains the detailed scientific paper on our approach.
-
----
-
-## License
-
-This project is licensed under the Apache License 2.0.
-See the LICENSE file for details.
 
 ---
 
