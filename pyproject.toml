@@ -17,7 +17,7 @@ matplotlib = "^3.10.8"
 scikit-image = "^0.26.0"
 tqdm = "^4.67.1"
 scikit-learn = "^1.8.0"
-pydicom = "^3.0.1"
+pydicom = "^3.0.2"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
